@@ -298,6 +298,9 @@ static DecodeStatus DecodeCall(MCInst &Inst, unsigned insn,
                                uint64_t Address, const void *Decoder);
 static DecodeStatus DecodeSIMM13(MCInst &Inst, unsigned insn,
                                  uint64_t Address, const void *Decoder);
+//marcmod
+static DecodeStatus DecodeSIMM5(MCInst &Inst, unsigned insn,
+                                 uint64_t Address, const void *Decoder);
 static DecodeStatus DecodeJMPL(MCInst &Inst, unsigned insn, uint64_t Address,
                                const void *Decoder);
 static DecodeStatus DecodeReturn(MCInst &MI, unsigned insn, uint64_t Address,
@@ -520,6 +523,13 @@ static DecodeStatus DecodeCall(MCInst &MI, unsigned insn,
 static DecodeStatus DecodeSIMM13(MCInst &MI, unsigned insn,
                                  uint64_t Address, const void *Decoder) {
   unsigned tgt = SignExtend32<13>(fieldFromInstruction(insn, 0, 13));
+  MI.addOperand(MCOperand::createImm(tgt));
+  return MCDisassembler::Success;
+}
+//marcmod
+static DecodeStatus DecodeSIMM5(MCInst &MI, unsigned insn,
+                                 uint64_t Address, const void *Decoder) {
+  unsigned tgt = SignExtend32<5>(fieldFromInstruction(insn, 0, 5));
   MI.addOperand(MCOperand::createImm(tgt));
   return MCDisassembler::Success;
 }

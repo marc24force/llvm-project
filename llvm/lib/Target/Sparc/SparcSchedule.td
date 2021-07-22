@@ -11,6 +11,7 @@
 
 def IIC_iu_or_fpu_instr : InstrItinClass;
 def IIC_iu_instr : InstrItinClass;
+def IIC_iu_simd : InstrItinClass; //marcmod
 def IIC_fpu_normal_instr : InstrItinClass;
 def IIC_fpu_fast_instr : InstrItinClass;
 def IIC_jmp_or_call : InstrItinClass;
@@ -43,6 +44,7 @@ def LEON2Itineraries : ProcessorItineraries<
 [LEONIU, LEONFPU], [], [
   InstrItinData<IIC_iu_or_fpu_instr, [InstrStage<1, [LEONIU, LEONFPU]>], [1, 1]>,
   InstrItinData<IIC_iu_instr, [InstrStage<1, [LEONIU]>], [1, 1]>,
+  InstrItinData<IIC_iu_simd, [InstrStage<1, [LEONIU]>], [2, 1]>, //marcmod
   InstrItinData<IIC_fpu_normal_instr, [InstrStage<1, [LEONFPU]>], [7, 1]>,
   InstrItinData<IIC_fpu_fast_instr, [InstrStage<1, [LEONFPU]>], [7, 1]>,
   InstrItinData<IIC_jmp_or_call, [InstrStage<1, [LEONIU, LEONFPU]>], [2, 1]>,
@@ -70,6 +72,7 @@ def LEON3Itineraries : ProcessorItineraries<
 [LEONIU, LEONFPU], [], [
   InstrItinData<IIC_iu_or_fpu_instr, [InstrStage<1, [LEONIU, LEONFPU]>], [1, 1]>,
   InstrItinData<IIC_iu_instr, [InstrStage<1, [LEONIU]>], [1, 1]>,
+  InstrItinData<IIC_iu_simd, [InstrStage<1, [LEONIU]>], [2, 1]>, //marcmod
   InstrItinData<IIC_fpu_normal_instr, [InstrStage<1, [LEONFPU]>], [7, 1]>,
   InstrItinData<IIC_fpu_fast_instr, [InstrStage<1, [LEONFPU]>], [4, 1]>,
   InstrItinData<IIC_jmp_or_call, [InstrStage<1, [LEONIU, LEONFPU]>], [3, 1]>,
@@ -98,6 +101,7 @@ def LEON4Itineraries : ProcessorItineraries<
 [LEONIU, LEONFPU], [], [
   InstrItinData<IIC_iu_or_fpu_instr, [InstrStage<1, [LEONIU, LEONFPU]>], [1, 1]>,
   InstrItinData<IIC_iu_instr, [InstrStage<1, [LEONIU]>], [1, 1]>,
+  InstrItinData<IIC_iu_simd, [InstrStage<1, [LEONIU]>], [2, 1]>, //marcmod
   InstrItinData<IIC_fpu_normal_instr, [InstrStage<1, [LEONFPU]>], [7, 1]>,
   InstrItinData<IIC_fpu_fast_instr, [InstrStage<1, [LEONFPU]>], [4, 1]>,
   InstrItinData<IIC_jmp_or_call, [InstrStage<1, [LEONIU, LEONFPU]>], [3, 1]>,

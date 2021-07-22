@@ -59,6 +59,7 @@ bool SparcMCExpr::printVariantKind(raw_ostream &OS, VariantKind Kind)
   case VK_Sparc_GOT10:    OS << "%lo("; return true;
   case VK_Sparc_GOT13:    return false;
   case VK_Sparc_13:       return false;
+  case VK_Sparc_5:       return false;
   case VK_Sparc_WDISP30:  return false;
   case VK_Sparc_WPLT30:   return false;
   case VK_Sparc_R_DISP32: OS << "%r_disp32("; return true;
@@ -139,6 +140,7 @@ Sparc::Fixups SparcMCExpr::getFixupKind(SparcMCExpr::VariantKind Kind) {
   case VK_Sparc_GOT10:    return Sparc::fixup_sparc_got10;
   case VK_Sparc_GOT13:    return Sparc::fixup_sparc_got13;
   case VK_Sparc_13:       return Sparc::fixup_sparc_13;
+  case VK_Sparc_5:        return Sparc::fixup_sparc_5;
   case VK_Sparc_WPLT30:   return Sparc::fixup_sparc_wplt30;
   case VK_Sparc_WDISP30:  return Sparc::fixup_sparc_call30;
   case VK_Sparc_TLS_GD_HI22:   return Sparc::fixup_sparc_tls_gd_hi22;

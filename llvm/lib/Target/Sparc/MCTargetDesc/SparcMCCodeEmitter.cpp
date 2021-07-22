@@ -78,6 +78,10 @@ public:
   unsigned getSImm13OpValue(const MCInst &MI, unsigned OpNo,
                             SmallVectorImpl<MCFixup> &Fixups,
                             const MCSubtargetInfo &STI) const;
+  //marcmod
+  unsigned getSImm5OpValue(const MCInst &MI, unsigned OpNo,
+                            SmallVectorImpl<MCFixup> &Fixups,
+                            const MCSubtargetInfo &STI) const;
   unsigned getBranchPredTargetOpValue(const MCInst &MI, unsigned OpNo,
                                       SmallVectorImpl<MCFixup> &Fixups,
                                       const MCSubtargetInfo &STI) const;
@@ -174,6 +178,37 @@ SparcMCCodeEmitter::getSImm13OpValue(const MCInst &MI, unsigned OpNo,
     bool IsPic = Ctx.getObjectFileInfo()->isPositionIndependent();
     Kind = IsPic ? MCFixupKind(Sparc::fixup_sparc_got13)
                  : MCFixupKind(Sparc::fixup_sparc_13);
+  }
+
+  Fixups.push_back(MCFixup::create(0, Expr, Kind));
+  return 0;
+}
+//marcmod
+unsigned
+SparcMCCodeEmitter::getSImm5OpValue(const MCInst &MI, unsigned OpNo,
+                                     SmallVectorImpl<MCFixup> &Fixups,
+                                     const MCSubtargetInfo &STI) const {
+  const MCOperand &MO = MI.getOperand(OpNo);
+
+  if (MO.isImm())
+    return MO.getImm();
+
+  assert(MO.isExpr() &&
+         "getSImm5OpValue expects only expressions or an immediate");
+
+  const MCExpr *Expr = MO.getExpr();
+
+  // Constant value, no fixup is needed
+  if (const MCConstantExpr *CE = dyn_cast<MCConstantExpr>(Expr))
+    return CE->getValue();
+
+  MCFixupKind Kind;
+  if (const SparcMCExpr *SExpr = dyn_cast<SparcMCExpr>(Expr)) {
+    Kind = MCFixupKind(SExpr->getFixupKind());
+  } else {
+    bool IsPic = Ctx.getObjectFileInfo()->isPositionIndependent();
+    Kind = IsPic ? MCFixupKind(Sparc::fixup_sparc_got5)
+                 : MCFixupKind(Sparc::fixup_sparc_5);
   }
 
   Fixups.push_back(MCFixup::create(0, Expr, Kind));

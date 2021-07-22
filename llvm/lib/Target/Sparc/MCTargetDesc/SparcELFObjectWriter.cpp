@@ -79,6 +79,8 @@ unsigned SparcELFObjectWriter::getRelocType(MCContext &Ctx,
                                          ? ELF::R_SPARC_UA64
                                          : ELF::R_SPARC_64);
   case Sparc::fixup_sparc_13:    return ELF::R_SPARC_13;
+ //marcmod                                
+  case Sparc::fixup_sparc_5:     return ELF::R_SPARC_5;
   case Sparc::fixup_sparc_hi22:  return ELF::R_SPARC_HI22;
   case Sparc::fixup_sparc_lo10:  return ELF::R_SPARC_LO10;
   case Sparc::fixup_sparc_h44:   return ELF::R_SPARC_H44;
@@ -90,6 +92,8 @@ unsigned SparcELFObjectWriter::getRelocType(MCContext &Ctx,
   case Sparc::fixup_sparc_got22: return ELF::R_SPARC_GOT22;
   case Sparc::fixup_sparc_got10: return ELF::R_SPARC_GOT10;
   case Sparc::fixup_sparc_got13: return ELF::R_SPARC_GOT13;
+//marcmod
+  case Sparc::fixup_sparc_got5:  return ELF::R_SPARC_5;
   case Sparc::fixup_sparc_tls_gd_hi22:   return ELF::R_SPARC_TLS_GD_HI22;
   case Sparc::fixup_sparc_tls_gd_lo10:   return ELF::R_SPARC_TLS_GD_LO10;
   case Sparc::fixup_sparc_tls_gd_add:    return ELF::R_SPARC_TLS_GD_ADD;

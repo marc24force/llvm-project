@@ -67,6 +67,8 @@ def CPSR : SparcCtrlReg<0, "CPSR">; // Co-processor state register.
 
 def CPQ : SparcCtrlReg<0, "CPQ">; // Co-processor queue.
 
+def SCR : SparcCtrlReg<0, "SCR">; //marcmod (SPARROW control register)
+
 // Y register
 def Y : SparcCtrlReg<0, "Y">, DwarfRegNum<[64]>;
 // Ancillary state registers (implementation defined)

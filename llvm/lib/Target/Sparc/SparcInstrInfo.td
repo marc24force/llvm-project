@@ -1156,7 +1156,7 @@ let Defs = [SCR], rd=0 in {
     def WRSCRrr : F3_1<2, 0b011001,
              (outs), (ins IntRegs:$rs1, IntRegs:$rs2),
              "wr $rs1, $rs2, %scr", []>;
-    def WRSCRri : F3_1<2, 0b011001,
+    def WRSCRri : F3_2<2, 0b011001,
              (outs), (ins IntRegs:$rs1, simm13Op:$simm13),
              "wr $rs1, $simm13, %scr", []>;
 }

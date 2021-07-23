@@ -377,19 +377,19 @@ multiclass SD_1<string OpcStr, bits<5> sd1Val, bits<3> sd2Val, SDNode OpNode,
                   itin>;
 }
 //marcmod
-//Simd multiclass - Define both Reg+Reg/Reg+Immm patterns in one shot.
+//Simd multiclass - Define all second stages for each first stage
 multiclass Simd<string OpcStr, bits<5> sd1Val, SDNode OpNode, 
                 RegisterClass RC, ValueType Ty, Operand immOp,
                 InstrItinClass itin = IIC_iu_instr> {
 
-  defm nop :  SD_1<OpcStr,                     sd1Val, 0b000, OpNode, RC, Ty, immOp, IIC_iu_instr> ;
-  defm sum :  SD_1<!strconcat(OpcStr, "sum"),  sd1Val, 0b001, OpNode, RC, Ty, immOp, IIC_iu_simd> ;
-  defm max :  SD_1<!strconcat(OpcStr, "max"),  sd1Val, 0b010, OpNode, RC, Ty, immOp, IIC_iu_simd> ;
-  defm min :  SD_1<!strconcat(OpcStr, "min"),  sd1Val, 0b011, OpNode, RC, Ty, immOp, IIC_iu_simd> ;
-  defm xor :  SD_1<!strconcat(OpcStr, "xor"),  sd1Val, 0b100, OpNode, RC, Ty, immOp, IIC_iu_simd> ;
-  defm usum : SD_1<!strconcat(OpcStr, "usum"), sd1Val, 0b101, OpNode, RC, Ty, immOp, IIC_iu_simd> ;
-  defm umax : SD_1<!strconcat(OpcStr, "umax"), sd1Val, 0b110, OpNode, RC, Ty, immOp, IIC_iu_simd> ;
-  defm umin : SD_1<!strconcat(OpcStr, "umin"), sd1Val, 0b111, OpNode, RC, Ty, immOp, IIC_iu_simd> ;
+  defm NOP :  SD_1<OpcStr,                     sd1Val, 0b000, OpNode, RC, Ty, immOp, IIC_iu_instr> ;
+  defm SUM :  SD_1<!strconcat(OpcStr, "sum"),  sd1Val, 0b001, OpNode, RC, Ty, immOp, IIC_iu_simd> ;
+  defm MAX :  SD_1<!strconcat(OpcStr, "max"),  sd1Val, 0b010, OpNode, RC, Ty, immOp, IIC_iu_simd> ;
+  defm MIN :  SD_1<!strconcat(OpcStr, "min"),  sd1Val, 0b011, OpNode, RC, Ty, immOp, IIC_iu_simd> ;
+  defm XOR :  SD_1<!strconcat(OpcStr, "xor"),  sd1Val, 0b100, OpNode, RC, Ty, immOp, IIC_iu_simd> ;
+  defm USUM : SD_1<!strconcat(OpcStr, "usum"), sd1Val, 0b101, OpNode, RC, Ty, immOp, IIC_iu_simd> ;
+  defm UMAX : SD_1<!strconcat(OpcStr, "umax"), sd1Val, 0b110, OpNode, RC, Ty, immOp, IIC_iu_simd> ;
+  defm UMIN : SD_1<!strconcat(OpcStr, "umin"), sd1Val, 0b111, OpNode, RC, Ty, immOp, IIC_iu_simd> ;
 
 }
 
@@ -1097,6 +1097,13 @@ let Predicates = [HasNoV9] in {
 		     "rd %tbr, $rd", []>;
 }
 
+//marcmod
+//SCR exists only in SPARROW 
+let rs2 = 0, rs1 = 0, Uses=[SCR] in
+    def RDSCR : F3_1<2, 0b101100,
+             (outs IntRegs:$rd), (ins),
+             "rd %scr, $rd", []>;
+
 // PC don't exist on the SparcV8, only the V9.
 let Predicates = [HasV9] in {
   let rs2 = 0, rs1 = 5 in
@@ -1141,6 +1148,17 @@ let Predicates = [HasNoV9] in {
 		     (outs), (ins IntRegs:$rs1, simm13Op:$simm13),
 		     "wr $rs1, $simm13, %tbr", []>;
   }
+}
+
+//marcmod
+//SCR exists only in SPARROW 
+let Defs = [SCR], rd=0 in {
+    def WRSCRrr : F3_1<2, 0b011001,
+             (outs), (ins IntRegs:$rs1, IntRegs:$rs2),
+             "wr $rs1, $rs2, %scr", []>;
+    def WRSCRri : F3_1<2, 0b011001,
+             (outs), (ins IntRegs:$rs1, simm13Op:$simm13),
+             "wr $rs1, $simm13, %scr", []>;
 }
 
 // Section B.30 - STBAR Instruction

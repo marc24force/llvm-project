@@ -117,35 +117,6 @@ class F3<dag outs, dag ins, string asmstr, list<dag> pattern,
   let Inst{24-19} = op3;
   let Inst{18-14} = rs1;
 }
-//marcmod AI format
-class F3_AI<bits<5>sd1Val, bits<3> sd2Val, dag outs, dag ins,
-            string asmstr, list<dag> pattern, InstrItinClass itin = NoItinerary>
-      : F3<outs, ins, asmstr, pattern, itin>{
-      bits<5> rs2;
-
-      let op = 2;
-      let op3 = 0b001001;
-
-      let Inst{13} = 0;
-      let Inst{12-10} = sd2Val;
-      let Inst{9-5} = sd1Val;
-      let Inst{4-0} = rs2;
-}
-
-//marcmod AI format with immediate
-class F3_AIimm<bits<5>sd1Val, bits<3> sd2Val, dag outs, dag ins,
-            string asmstr, list<dag> pattern, InstrItinClass itin = NoItinerary>
-      : F3<outs, ins, asmstr, pattern, itin>{
-      bits<5> simm5;
-
-      let op = 2;
-      let op3 = 0b001001;
-
-      let Inst{13} = 1;
-      let Inst{12-10} = sd2Val;
-      let Inst{9-5} = sd1Val;
-      let Inst{4-0} = simm5;
-}
 
 // Specific F3 classes: SparcV8 manual, page 44
 //

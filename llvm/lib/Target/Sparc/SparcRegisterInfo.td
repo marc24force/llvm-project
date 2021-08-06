@@ -328,7 +328,7 @@ def C30_C31 : Rdi<30, "C30", [C30, C31]>;
 // This register class should not be used to hold i64 values, use the I64Regs
 // register class for that. The i64 type is included here to allow i64 patterns
 // using the integer instructions.
-def IntRegs : RegisterClass<"SP", [i32, i64], 32,
+def IntRegs : RegisterClass<"SP", [i32, i64, v4i8], 32, //marcmod
                             (add (sequence "I%u", 0, 7),
                                  (sequence "G%u", 0, 7),
                                  (sequence "L%u", 0, 7),

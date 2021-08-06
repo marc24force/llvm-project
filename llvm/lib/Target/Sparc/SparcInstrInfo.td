@@ -190,12 +190,6 @@ def simm13Op : Operand<i32> {
   let EncoderMethod = "getSImm13OpValue";
 }
 
-//marcmod
-def simm5Op : Operand<i32> {
-  let DecoderMethod = "DecodeSIMM5";
-  let EncoderMethod = "getSImm5OpValue";
-}
-
 // Operand for printing out a condition code.
 let PrintMethod = "printCCOperand" in
   def CCOp : Operand<i32>;
@@ -358,39 +352,6 @@ multiclass F3_12np<string OpcStr, bits<6> Op3Val, InstrItinClass itin = IIC_iu_i
                  (outs IntRegs:$rd), (ins IntRegs:$rs1, simm13Op:$simm13),
                  !strconcat(OpcStr, " $rs1, $simm13, $rd"), [],
                  itin>;
-}
-
-//marcmod
-//Simd multiclass - Define both Reg+Reg/Reg+Immm patterns in one shot.
-multiclass SD_1<string OpcStr, bits<5> sd1Val, bits<3> sd2Val, SDNode OpNode, 
-                RegisterClass RC, ValueType Ty, Operand immOp,
-                InstrItinClass itin = IIC_iu_simd> {
-
-  def rr  : F3_AI<sd1Val, sd2Val, (outs RC:$rd), (ins RC:$rs1, RC:$rs2),
-                  !strconcat(OpcStr, " $rs1, $rs2, $rd"),
-                  [(set Ty:$rd, (OpNode Ty:$rs1, Ty:$rs2))],
-                  itin>;
-
-  def ri  : F3_AIimm<sd1Val, sd2Val, (outs RC:$rd), (ins RC:$rs1, immOp:$simm5),
-                  !strconcat(OpcStr, " $rs1, $simm5, $rd"),
-                  [(set Ty:$rd, (OpNode Ty:$rs1, (Ty simm5:$simm5)))],
-                  itin>;
-}
-//marcmod
-//Simd multiclass - Define all second stages for each first stage
-multiclass Simd<string OpcStr, bits<5> sd1Val, SDNode OpNode, 
-                RegisterClass RC, ValueType Ty, Operand immOp,
-                InstrItinClass itin = IIC_iu_instr> {
-
-  defm NOP :  SD_1<OpcStr,                     sd1Val, 0b000, OpNode, RC, Ty, immOp, IIC_iu_instr> ;
-  defm SUM :  SD_1<!strconcat(OpcStr, "sum"),  sd1Val, 0b001, OpNode, RC, Ty, immOp, IIC_iu_simd> ;
-  defm MAX :  SD_1<!strconcat(OpcStr, "max"),  sd1Val, 0b010, OpNode, RC, Ty, immOp, IIC_iu_simd> ;
-  defm MIN :  SD_1<!strconcat(OpcStr, "min"),  sd1Val, 0b011, OpNode, RC, Ty, immOp, IIC_iu_simd> ;
-  defm XOR :  SD_1<!strconcat(OpcStr, "xor"),  sd1Val, 0b100, OpNode, RC, Ty, immOp, IIC_iu_simd> ;
-  defm USUM : SD_1<!strconcat(OpcStr, "usum"), sd1Val, 0b101, OpNode, RC, Ty, immOp, IIC_iu_simd> ;
-  defm UMAX : SD_1<!strconcat(OpcStr, "umax"), sd1Val, 0b110, OpNode, RC, Ty, immOp, IIC_iu_simd> ;
-  defm UMIN : SD_1<!strconcat(OpcStr, "umin"), sd1Val, 0b111, OpNode, RC, Ty, immOp, IIC_iu_simd> ;
-
 }
 
 // Load multiclass - Define both Reg+Reg/Reg+Imm patterns in one shot.
@@ -556,6 +517,7 @@ let DecoderMethod = "DecodeLoadInt" in {
   defm LDUB : LoadA<"ldub", 0b000001, 0b010001, zextloadi8,  IntRegs, i32>;
   defm LDUH : LoadA<"lduh", 0b000010, 0b010010, zextloadi16, IntRegs, i32>;
   defm LD   : LoadA<"ld",   0b000000, 0b010000, load,        IntRegs, i32>;
+  //defm LDV   : LoadA<"ld",   0b000000, 0b010000, load,        IntRegs, v4i8>;
 }
 
 let DecoderMethod = "DecodeLoadIntPair" in
@@ -1097,13 +1059,6 @@ let Predicates = [HasNoV9] in {
 		     "rd %tbr, $rd", []>;
 }
 
-//marcmod
-//SCR exists only in SPARROW 
-let rs2 = 0, rs1 = 0, Uses=[SCR] in
-    def RDSCR : F3_1<2, 0b101100,
-             (outs IntRegs:$rd), (ins),
-             "rd %scr, $rd", []>;
-
 // PC don't exist on the SparcV8, only the V9.
 let Predicates = [HasV9] in {
   let rs2 = 0, rs1 = 5 in
@@ -1148,17 +1103,6 @@ let Predicates = [HasNoV9] in {
 		     (outs), (ins IntRegs:$rs1, simm13Op:$simm13),
 		     "wr $rs1, $simm13, %tbr", []>;
   }
-}
-
-//marcmod
-//SCR exists only in SPARROW 
-let Defs = [SCR], rd=0 in {
-    def WRSCRrr : F3_1<2, 0b011001,
-             (outs), (ins IntRegs:$rs1, IntRegs:$rs2),
-             "wr $rs1, $rs2, %scr", []>;
-    def WRSCRri : F3_2<2, 0b011001,
-             (outs), (ins IntRegs:$rs1, simm13Op:$simm13),
-             "wr $rs1, $simm13, %scr", []>;
 }
 
 // Section B.30 - STBAR Instruction
@@ -1398,36 +1342,6 @@ let Defs = [FCC0], rd = 0, isCodeGenOnly = 1 in {
                    "fcmpq $rs1, $rs2",
                    [(SPcmpfcc f128:$rs1, f128:$rs2)]>,
                    Requires<[HasHardQuad]>;
-}
-
-//TODO: change sub for sparrow
-//marcmod
-//SPARROW instructions
-let Uses = [SCR] in{
-  defm NOP_   : Simd<"nop_",   0b00000, sub, IntRegs, i32, simm5Op>;
-  defm ADD_   : Simd<"add_",   0b00001, sub, IntRegs, i32, simm5Op>;
-  defm SUB_   : Simd<"sub_",   0b00010, sub, IntRegs, i32, simm5Op>;
-  defm MUL_   : Simd<"mul_",   0b00011, sub, IntRegs, i32, simm5Op>;
-  defm MAX_   : Simd<"max_",   0b00101, sub, IntRegs, i32, simm5Op>;
-  defm MIN_   : Simd<"min_",   0b00110, sub, IntRegs, i32, simm5Op>;
-  defm AND_   : Simd<"and_",   0b00111, sub, IntRegs, i32, simm5Op>;
-  defm OR_    : Simd<"or_",    0b01000, sub, IntRegs, i32, simm5Op>;
-  defm XOR_   : Simd<"xor_",   0b01001, sub, IntRegs, i32, simm5Op>;
-  defm NAND_  : Simd<"nand_",  0b01010, sub, IntRegs, i32, simm5Op>;
-  defm NOR_   : Simd<"nor_",   0b01011, sub, IntRegs, i32, simm5Op>;
-  defm XNOR_  : Simd<"xnor_",  0b01100, sub, IntRegs, i32, simm5Op>;
-  defm SADD_  : Simd<"sadd_",  0b01101, sub, IntRegs, i32, simm5Op>;
-  defm SSUB_  : Simd<"ssub_",  0b01110, sub, IntRegs, i32, simm5Op>;
-  defm SMUL_  : Simd<"smul_",  0b01111, sub, IntRegs, i32, simm5Op>;
-  defm MERG_  : Simd<"merg_",  0b10000, sub, IntRegs, i32, simm5Op>;
-  defm SHFT_  : Simd<"shft_",  0b10001, sub, IntRegs, i32, simm5Op>;
-  defm UMUL_  : Simd<"umul_",  0b10011, sub, IntRegs, i32, simm5Op>;
-  defm UMAX_  : Simd<"umax_",  0b10101, sub, IntRegs, i32, simm5Op>;
-  defm UMIN_  : Simd<"umin_",  0b10110, sub, IntRegs, i32, simm5Op>;
-  defm SSHFT_ : Simd<"sshft_", 0b11001, sub, IntRegs, i32, simm5Op>;
-  defm USADD_ : Simd<"usadd_", 0b11101, sub, IntRegs, i32, simm5Op>;
-  defm USSUB_ : Simd<"ussub_", 0b11110, sub, IntRegs, i32, simm5Op>;
-  defm USMUL_ : Simd<"usmul_", 0b11111, sub, IntRegs, i32, simm5Op>;
 }
 
 //===----------------------------------------------------------------------===//
@@ -1832,5 +1746,6 @@ def : Pat<(build_vector (i32 IntRegs:$a1), (i32 IntRegs:$a2)),
 
 
 include "SparcInstr64Bit.td"
+include "SparcInstrSPARROW.td" //marcmod
 include "SparcInstrVIS.td"
 include "SparcInstrAliases.td"

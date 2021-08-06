@@ -299,6 +299,9 @@ static DecodeStatus DecodeCall(MCInst &Inst, unsigned insn,
 static DecodeStatus DecodeSIMM13(MCInst &Inst, unsigned insn,
                                  uint64_t Address, const void *Decoder);
 //marcmod
+static DecodeStatus DecodeIMM5(MCInst &Inst, unsigned insn,
+                                 uint64_t Address, const void *Decoder);
+//marcmod
 static DecodeStatus DecodeSIMM5(MCInst &Inst, unsigned insn,
                                  uint64_t Address, const void *Decoder);
 static DecodeStatus DecodeJMPL(MCInst &Inst, unsigned insn, uint64_t Address,
@@ -527,9 +530,27 @@ static DecodeStatus DecodeSIMM13(MCInst &MI, unsigned insn,
   return MCDisassembler::Success;
 }
 //marcmod
+static DecodeStatus DecodeIMM5(MCInst &MI, unsigned insn,
+                                uint64_t Address, const void *Decoder) {
+  unsigned tgt;
+  unsigned exp, plus, sub;
+  plus = (fieldFromInstruction(insn, 4, 1)<<1);
+  sub = fieldFromInstruction(insn, 0, 1);
+  exp = 1 << fieldFromInstruction(insn, 1, 3);
+  tgt = exp - sub + plus;
+  MI.addOperand(MCOperand::createImm(tgt));
+  return MCDisassembler::Success;
+}
+//marcmod
 static DecodeStatus DecodeSIMM5(MCInst &MI, unsigned insn,
                                  uint64_t Address, const void *Decoder) {
-  unsigned tgt = SignExtend32<5>(fieldFromInstruction(insn, 0, 5));
+  signed tgt;
+  signed sign;
+  unsigned exp, sub;
+  sign = fieldFromInstruction(insn, 4, 1)?-1:1;
+  sub = fieldFromInstruction(insn, 0, 1);
+  exp = 1<<fieldFromInstruction(insn, 1, 3);
+  tgt = sign * (exp - sub);
   MI.addOperand(MCOperand::createImm(tgt));
   return MCDisassembler::Success;
 }

@@ -422,30 +422,6 @@ def : InstAlias<"bclr $simm13, $rd", (ANDNri IntRegs:$rd, IntRegs:$rd, i32imm:$s
 def : InstAlias<"btog $rs2, $rd", (XORrr IntRegs:$rd, IntRegs:$rd, IntRegs:$rs2), 0>;
 def : InstAlias<"btog $simm13, $rd", (XORri IntRegs:$rd, IntRegs:$rd, i32imm:$simm13), 0>;
 
-//marcmod 
-//dot alias
-def : InstAlias<"dot $rs1, $rs2, $rd", (MUL_SUMrr IntRegs:$rd, IntRegs:$rs1, IntRegs:$rs2), 0>;
-def : InstAlias<"dot $rs1, $simm5, $rd", (MUL_SUMri IntRegs:$rd, IntRegs:$rs1, i32imm:$simm5), 0>;
-//udot alias
-def : InstAlias<"udot $rs1, $rs2, $rd", (UMUL_USUMrr IntRegs:$rd, IntRegs:$rs1, IntRegs:$rs2), 0>;
-def : InstAlias<"udot $rs1, $simm5, $rd", (UMUL_USUMri IntRegs:$rd, IntRegs:$rs1, i32imm:$simm5), 0>;
-//sdot alias
-def : InstAlias<"sdot $rs1, $rs2, $rd", (SMUL_SUMrr IntRegs:$rd, IntRegs:$rs1, IntRegs:$rs2), 0>;
-def : InstAlias<"sdot $rs1, $simm5, $rd", (SMUL_SUMri IntRegs:$rd, IntRegs:$rs1, i32imm:$simm5), 0>;
-//usdot alias
-def : InstAlias<"usdot $rs1, $rs2, $rd", (USMUL_USUMrr IntRegs:$rd, IntRegs:$rs1, IntRegs:$rs2), 0>;
-def : InstAlias<"usdot $rs1, $simm5, $rd", (USMUL_USUMri IntRegs:$rd, IntRegs:$rs1, i32imm:$simm5), 0>;
-//nop alias nop_ -> nop %g0, %g0, %g0
-def : InstAlias<"nop_", (NOP_NOPrr G0, G0, G0), 0>;
-//nop alias nop_x rs1, rd -> nop_x rs1, %g0, rd
-def : InstAlias<"nop_ $rs1, $rd", (NOP_NOPrr IntRegs:$rd, IntRegs:$rs1, G0), 0>;
-def : InstAlias<"nop_sum $rs1, $rd", (NOP_SUMrr IntRegs:$rd, IntRegs:$rs1, G0), 0>;
-def : InstAlias<"nop_max $rs1, $rd", (NOP_MAXrr IntRegs:$rd, IntRegs:$rs1, G0), 0>;
-def : InstAlias<"nop_min $rs1, $rd", (NOP_MINrr IntRegs:$rd, IntRegs:$rs1, G0), 0>;
-def : InstAlias<"nop_xor $rs1, $rd", (NOP_XORrr IntRegs:$rd, IntRegs:$rs1, G0), 0>;
-def : InstAlias<"nop_usum $rs1, $rd", (NOP_USUMrr IntRegs:$rd, IntRegs:$rs1, G0), 0>;
-def : InstAlias<"nop_umax $rs1, $rd", (NOP_UMAXrr IntRegs:$rd, IntRegs:$rs1, G0), 0>;
-def : InstAlias<"nop_umin $rs1, $rd", (NOP_UMINrr IntRegs:$rd, IntRegs:$rs1, G0), 0>;
 
 
 // clr rd -> or %g0, %g0, rd
@@ -470,7 +446,6 @@ def : InstAlias<"mov %psr, $rd", (RDPSR IntRegs:$rd), 0>;
 def : InstAlias<"mov %wim, $rd", (RDWIM IntRegs:$rd), 0>;
 def : InstAlias<"mov %tbr, $rd", (RDTBR IntRegs:$rd), 0>;
 def : InstAlias<"mov %pc, $rd", (RDPC IntRegs:$rd), 0>;
-def : InstAlias<"mov %scr, $rd", (RDSCR IntRegs:$rd), 0>; //marcmod
 
 // mov reg_or_imm, specialreg -> wr %g0, reg_or_imm, specialreg
 def : InstAlias<"mov $rs2, $asr", (WRASRrr ASRRegs:$asr, G0, IntRegs:$rs2), 0>;
@@ -481,8 +456,6 @@ def : InstAlias<"mov $rs2, %wim", (WRWIMrr G0, IntRegs:$rs2), 0>;
 def : InstAlias<"mov $simm13, %wim", (WRWIMri G0, i32imm:$simm13), 0>;
 def : InstAlias<"mov $rs2, %tbr", (WRTBRrr G0, IntRegs:$rs2), 0>;
 def : InstAlias<"mov $simm13, %tbr", (WRTBRri G0, i32imm:$simm13), 0>;
-def : InstAlias<"mov $rs2, %scr", (WRSCRrr G0, IntRegs:$rs2), 0>; //marcmod
-def : InstAlias<"mov $simm13, %scr", (WRSCRri G0, i32imm:$simm13), 0>; //marcmod
 
 // End of Section A.3
 
@@ -497,8 +470,6 @@ def : InstAlias<"wr $rs2, %wim", (WRWIMrr G0, IntRegs:$rs2), 0>;
 def : InstAlias<"wr $simm13, %wim", (WRWIMri G0, i32imm:$simm13), 0>;
 def : InstAlias<"wr $rs2, %tbr", (WRTBRrr G0, IntRegs:$rs2), 0>;
 def : InstAlias<"wr $simm13, %tbr", (WRTBRri G0, i32imm:$simm13), 0>;
-def : InstAlias<"wr $rs2, %scr", (WRSCRrr G0, IntRegs:$rs2), 0>;
-def : InstAlias<"wr $simm13, %scr", (WRSCRri G0, i32imm:$simm13), 0>;
 
 def : InstAlias<"pwr $rs2, %psr", (PWRPSRrr G0, IntRegs:$rs2), 0>;
 def : InstAlias<"pwr $simm13, %psr", (PWRPSRri G0, i32imm:$simm13), 0>;

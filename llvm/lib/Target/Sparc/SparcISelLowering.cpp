@@ -725,6 +725,7 @@ SparcTargetLowering::LowerCall_32(TargetLowering::CallLoweringInfo &CLI,
   CallingConv::ID CallConv              = CLI.CallConv;
   bool isVarArg                         = CLI.IsVarArg;
 
+
   // Sparc target does not yet support tail call optimization.
   isTailCall = false;
 
@@ -1408,419 +1409,430 @@ static SPCC::CondCodes FPCondCCodeToFCC(ISD::CondCode CC) {
 SparcTargetLowering::SparcTargetLowering(const TargetMachine &TM,
                                          const SparcSubtarget &STI)
     : TargetLowering(TM), Subtarget(&STI) {
-  MVT PtrVT = MVT::getIntegerVT(8 * TM.getPointerSize(0));
+        MVT PtrVT = MVT::getIntegerVT(8 * TM.getPointerSize(0));
 
-  // Instructions which use registers as conditionals examine all the
-  // bits (as does the pseudo SELECT_CC expansion). I don't think it
-  // matters much whether it's ZeroOrOneBooleanContent, or
-  // ZeroOrNegativeOneBooleanContent, so, arbitrarily choose the
-  // former.
-  setBooleanContents(ZeroOrOneBooleanContent);
-  setBooleanVectorContents(ZeroOrOneBooleanContent);
+        // Instructions which use registers as conditionals examine all the
+        // bits (as does the pseudo SELECT_CC expansion). I don't think it
+        // matters much whether it's ZeroOrOneBooleanContent, or
+        // ZeroOrNegativeOneBooleanContent, so, arbitrarily choose the
+        // former.
+        setBooleanContents(ZeroOrOneBooleanContent);
+        setBooleanVectorContents(ZeroOrOneBooleanContent);
 
-  // Set up the register classes.
-  addRegisterClass(MVT::i32, &SP::IntRegsRegClass);
-  if (!Subtarget->useSoftFloat()) {
-    addRegisterClass(MVT::f32, &SP::FPRegsRegClass);
-    addRegisterClass(MVT::f64, &SP::DFPRegsRegClass);
-    addRegisterClass(MVT::f128, &SP::QFPRegsRegClass);
-  }
-  if (Subtarget->is64Bit()) {
-    addRegisterClass(MVT::i64, &SP::I64RegsRegClass);
-  } else {
-    // On 32bit sparc, we define a double-register 32bit register
-    // class, as well. This is modeled in LLVM as a 2-vector of i32.
-    addRegisterClass(MVT::v2i32, &SP::IntPairRegClass);
+        // Set up the register classes.
+        addRegisterClass(MVT::i32, &SP::IntRegsRegClass);
+        if (!Subtarget->useSoftFloat()) {
+            addRegisterClass(MVT::f32, &SP::FPRegsRegClass);
+            addRegisterClass(MVT::f64, &SP::DFPRegsRegClass);
+            addRegisterClass(MVT::f128, &SP::QFPRegsRegClass);
+        }
+        //marcmod
+        addRegisterClass(MVT::v4i8, &SP::IntRegsRegClass);
+        for (unsigned Op = 0; Op < ISD::BUILTIN_OP_END; ++Op) {
+            setOperationAction(Op, MVT::v4i8, Expand);
+        }
+        setOperationAction(ISD::STORE, MVT::v4i8, Legal);
+        setOperationAction(ISD::LOAD, MVT::v4i8, Legal);
+        setOperationAction(ISD::ADD, MVT::v4i8, Legal);
+        setOperationAction(ISD::SUB, MVT::v4i8, Legal);
+        setOperationAction(ISD::MUL, MVT::v4i8, Legal);
 
-    // ...but almost all operations must be expanded, so set that as
-    // the default.
-    for (unsigned Op = 0; Op < ISD::BUILTIN_OP_END; ++Op) {
-      setOperationAction(Op, MVT::v2i32, Expand);
+        if (Subtarget->is64Bit()) {
+            addRegisterClass(MVT::i64, &SP::I64RegsRegClass);
+        } else {
+            // On 32bit sparc, we define a double-register 32bit register
+            // class, as well. This is modeled in LLVM as a 2-vector of i32.
+            addRegisterClass(MVT::v2i32, &SP::IntPairRegClass);
+
+            // ...but almost all operations must be expanded, so set that as
+            // the default.
+            for (unsigned Op = 0; Op < ISD::BUILTIN_OP_END; ++Op) {
+                setOperationAction(Op, MVT::v2i32, Expand);
+            }
+            // Truncating/extending stores/loads are also not supported.
+            for (MVT VT : MVT::integer_fixedlen_vector_valuetypes()) {
+                setLoadExtAction(ISD::SEXTLOAD, VT, MVT::v2i32, Expand);
+                setLoadExtAction(ISD::ZEXTLOAD, VT, MVT::v2i32, Expand);
+                setLoadExtAction(ISD::EXTLOAD, VT, MVT::v2i32, Expand);
+
+                setLoadExtAction(ISD::SEXTLOAD, MVT::v2i32, VT, Expand);
+                setLoadExtAction(ISD::ZEXTLOAD, MVT::v2i32, VT, Expand);
+                setLoadExtAction(ISD::EXTLOAD, MVT::v2i32, VT, Expand);
+
+                setTruncStoreAction(VT, MVT::v2i32, Expand);
+                setTruncStoreAction(MVT::v2i32, VT, Expand);
+            }
+            // However, load and store *are* legal.
+            setOperationAction(ISD::LOAD, MVT::v2i32, Legal);
+            setOperationAction(ISD::STORE, MVT::v2i32, Legal);
+            setOperationAction(ISD::EXTRACT_VECTOR_ELT, MVT::v2i32, Legal);
+            setOperationAction(ISD::BUILD_VECTOR, MVT::v2i32, Legal);
+
+            // And we need to promote i64 loads/stores into vector load/store
+            setOperationAction(ISD::LOAD, MVT::i64, Custom);
+            setOperationAction(ISD::STORE, MVT::i64, Custom);
+
+            // Sadly, this doesn't work:
+            //    AddPromotedToType(ISD::LOAD, MVT::i64, MVT::v2i32);
+            //    AddPromotedToType(ISD::STORE, MVT::i64, MVT::v2i32);
+        }
+
+        // Turn FP extload into load/fpextend
+        for (MVT VT : MVT::fp_valuetypes()) {
+            setLoadExtAction(ISD::EXTLOAD, VT, MVT::f16, Expand);
+            setLoadExtAction(ISD::EXTLOAD, VT, MVT::f32, Expand);
+            setLoadExtAction(ISD::EXTLOAD, VT, MVT::f64, Expand);
+        }
+
+        // Sparc doesn't have i1 sign extending load
+        for (MVT VT : MVT::integer_valuetypes())
+            setLoadExtAction(ISD::SEXTLOAD, VT, MVT::i1, Promote);
+
+        // Turn FP truncstore into trunc + store.
+        setTruncStoreAction(MVT::f32, MVT::f16, Expand);
+        setTruncStoreAction(MVT::f64, MVT::f16, Expand);
+        setTruncStoreAction(MVT::f64, MVT::f32, Expand);
+        setTruncStoreAction(MVT::f128, MVT::f16, Expand);
+        setTruncStoreAction(MVT::f128, MVT::f32, Expand);
+        setTruncStoreAction(MVT::f128, MVT::f64, Expand);
+
+        // Custom legalize GlobalAddress nodes into LO/HI parts.
+        setOperationAction(ISD::GlobalAddress, PtrVT, Custom);
+        setOperationAction(ISD::GlobalTLSAddress, PtrVT, Custom);
+        setOperationAction(ISD::ConstantPool, PtrVT, Custom);
+        setOperationAction(ISD::BlockAddress, PtrVT, Custom);
+
+        // Sparc doesn't have sext_inreg, replace them with shl/sra
+        setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i16, Expand);
+        setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i8 , Expand);
+        setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i1 , Expand);
+
+        // Sparc has no REM or DIVREM operations.
+        setOperationAction(ISD::UREM, MVT::i32, Expand);
+        setOperationAction(ISD::SREM, MVT::i32, Expand);
+        setOperationAction(ISD::SDIVREM, MVT::i32, Expand);
+        setOperationAction(ISD::UDIVREM, MVT::i32, Expand);
+
+        // ... nor does SparcV9.
+        if (Subtarget->is64Bit()) {
+            setOperationAction(ISD::UREM, MVT::i64, Expand);
+            setOperationAction(ISD::SREM, MVT::i64, Expand);
+            setOperationAction(ISD::SDIVREM, MVT::i64, Expand);
+            setOperationAction(ISD::UDIVREM, MVT::i64, Expand);
+        }
+
+        // Custom expand fp<->sint
+        setOperationAction(ISD::FP_TO_SINT, MVT::i32, Custom);
+        setOperationAction(ISD::SINT_TO_FP, MVT::i32, Custom);
+        setOperationAction(ISD::FP_TO_SINT, MVT::i64, Custom);
+        setOperationAction(ISD::SINT_TO_FP, MVT::i64, Custom);
+
+        // Custom Expand fp<->uint
+        setOperationAction(ISD::FP_TO_UINT, MVT::i32, Custom);
+        setOperationAction(ISD::UINT_TO_FP, MVT::i32, Custom);
+        setOperationAction(ISD::FP_TO_UINT, MVT::i64, Custom);
+        setOperationAction(ISD::UINT_TO_FP, MVT::i64, Custom);
+
+        // Lower f16 conversion operations into library calls
+        setOperationAction(ISD::FP16_TO_FP, MVT::f32, Expand);
+        setOperationAction(ISD::FP_TO_FP16, MVT::f32, Expand);
+        setOperationAction(ISD::FP16_TO_FP, MVT::f64, Expand);
+        setOperationAction(ISD::FP_TO_FP16, MVT::f64, Expand);
+        setOperationAction(ISD::FP16_TO_FP, MVT::f128, Expand);
+        setOperationAction(ISD::FP_TO_FP16, MVT::f128, Expand);
+
+        setOperationAction(ISD::BITCAST, MVT::f32, Expand);
+        setOperationAction(ISD::BITCAST, MVT::i32, Expand);
+
+        // Sparc has no select or setcc: expand to SELECT_CC.
+        setOperationAction(ISD::SELECT, MVT::i32, Expand);
+        setOperationAction(ISD::SELECT, MVT::f32, Expand);
+        setOperationAction(ISD::SELECT, MVT::f64, Expand);
+        setOperationAction(ISD::SELECT, MVT::f128, Expand);
+
+        setOperationAction(ISD::SETCC, MVT::i32, Expand);
+        setOperationAction(ISD::SETCC, MVT::f32, Expand);
+        setOperationAction(ISD::SETCC, MVT::f64, Expand);
+        setOperationAction(ISD::SETCC, MVT::f128, Expand);
+
+        // Sparc doesn't have BRCOND either, it has BR_CC.
+        setOperationAction(ISD::BRCOND, MVT::Other, Expand);
+        setOperationAction(ISD::BRIND, MVT::Other, Expand);
+        setOperationAction(ISD::BR_JT, MVT::Other, Expand);
+        setOperationAction(ISD::BR_CC, MVT::i32, Custom);
+        setOperationAction(ISD::BR_CC, MVT::f32, Custom);
+        setOperationAction(ISD::BR_CC, MVT::f64, Custom);
+        setOperationAction(ISD::BR_CC, MVT::f128, Custom);
+
+        setOperationAction(ISD::SELECT_CC, MVT::i32, Custom);
+        setOperationAction(ISD::SELECT_CC, MVT::f32, Custom);
+        setOperationAction(ISD::SELECT_CC, MVT::f64, Custom);
+        setOperationAction(ISD::SELECT_CC, MVT::f128, Custom);
+
+        setOperationAction(ISD::ADDC, MVT::i32, Custom);
+        setOperationAction(ISD::ADDE, MVT::i32, Custom);
+        setOperationAction(ISD::SUBC, MVT::i32, Custom);
+        setOperationAction(ISD::SUBE, MVT::i32, Custom);
+
+        if (Subtarget->is64Bit()) {
+            setOperationAction(ISD::ADDC, MVT::i64, Custom);
+            setOperationAction(ISD::ADDE, MVT::i64, Custom);
+            setOperationAction(ISD::SUBC, MVT::i64, Custom);
+            setOperationAction(ISD::SUBE, MVT::i64, Custom);
+            setOperationAction(ISD::BITCAST, MVT::f64, Expand);
+            setOperationAction(ISD::BITCAST, MVT::i64, Expand);
+            setOperationAction(ISD::SELECT, MVT::i64, Expand);
+            setOperationAction(ISD::SETCC, MVT::i64, Expand);
+            setOperationAction(ISD::BR_CC, MVT::i64, Custom);
+            setOperationAction(ISD::SELECT_CC, MVT::i64, Custom);
+
+            setOperationAction(ISD::CTPOP, MVT::i64,
+                    Subtarget->usePopc() ? Legal : Expand);
+            setOperationAction(ISD::CTTZ , MVT::i64, Expand);
+            setOperationAction(ISD::CTLZ , MVT::i64, Expand);
+            setOperationAction(ISD::BSWAP, MVT::i64, Expand);
+            setOperationAction(ISD::ROTL , MVT::i64, Expand);
+            setOperationAction(ISD::ROTR , MVT::i64, Expand);
+            setOperationAction(ISD::DYNAMIC_STACKALLOC, MVT::i64, Custom);
+        }
+
+        // ATOMICs.
+        // Atomics are supported on SparcV9. 32-bit atomics are also
+        // supported by some Leon SparcV8 variants. Otherwise, atomics
+        // are unsupported.
+        if (Subtarget->isV9())
+            setMaxAtomicSizeInBitsSupported(64);
+        else if (Subtarget->hasLeonCasa())
+            setMaxAtomicSizeInBitsSupported(32);
+        else
+            setMaxAtomicSizeInBitsSupported(0);
+
+        setMinCmpXchgSizeInBits(32);
+
+        setOperationAction(ISD::ATOMIC_SWAP, MVT::i32, Legal);
+
+        setOperationAction(ISD::ATOMIC_FENCE, MVT::Other, Legal);
+
+        // Custom Lower Atomic LOAD/STORE
+        setOperationAction(ISD::ATOMIC_LOAD, MVT::i32, Custom);
+        setOperationAction(ISD::ATOMIC_STORE, MVT::i32, Custom);
+
+        if (Subtarget->is64Bit()) {
+            setOperationAction(ISD::ATOMIC_CMP_SWAP, MVT::i64, Legal);
+            setOperationAction(ISD::ATOMIC_SWAP, MVT::i64, Legal);
+            setOperationAction(ISD::ATOMIC_LOAD, MVT::i64, Custom);
+            setOperationAction(ISD::ATOMIC_STORE, MVT::i64, Custom);
+        }
+
+        if (!Subtarget->is64Bit()) {
+            // These libcalls are not available in 32-bit.
+            setLibcallName(RTLIB::SHL_I128, nullptr);
+            setLibcallName(RTLIB::SRL_I128, nullptr);
+            setLibcallName(RTLIB::SRA_I128, nullptr);
+        }
+
+        if (!Subtarget->isV9()) {
+            // SparcV8 does not have FNEGD and FABSD.
+            setOperationAction(ISD::FNEG, MVT::f64, Custom);
+            setOperationAction(ISD::FABS, MVT::f64, Custom);
+        }
+
+        setOperationAction(ISD::FSIN , MVT::f128, Expand);
+        setOperationAction(ISD::FCOS , MVT::f128, Expand);
+        setOperationAction(ISD::FSINCOS, MVT::f128, Expand);
+        setOperationAction(ISD::FREM , MVT::f128, Expand);
+        setOperationAction(ISD::FMA  , MVT::f128, Expand);
+        setOperationAction(ISD::FSIN , MVT::f64, Expand);
+        setOperationAction(ISD::FCOS , MVT::f64, Expand);
+        setOperationAction(ISD::FSINCOS, MVT::f64, Expand);
+        setOperationAction(ISD::FREM , MVT::f64, Expand);
+        setOperationAction(ISD::FMA  , MVT::f64, Expand);
+        setOperationAction(ISD::FSIN , MVT::f32, Expand);
+        setOperationAction(ISD::FCOS , MVT::f32, Expand);
+        setOperationAction(ISD::FSINCOS, MVT::f32, Expand);
+        setOperationAction(ISD::FREM , MVT::f32, Expand);
+        setOperationAction(ISD::FMA  , MVT::f32, Expand);
+        setOperationAction(ISD::CTTZ , MVT::i32, Expand);
+        setOperationAction(ISD::CTLZ , MVT::i32, Expand);
+        setOperationAction(ISD::ROTL , MVT::i32, Expand);
+        setOperationAction(ISD::ROTR , MVT::i32, Expand);
+        setOperationAction(ISD::BSWAP, MVT::i32, Expand);
+        setOperationAction(ISD::FCOPYSIGN, MVT::f128, Expand);
+        setOperationAction(ISD::FCOPYSIGN, MVT::f64, Expand);
+        setOperationAction(ISD::FCOPYSIGN, MVT::f32, Expand);
+        setOperationAction(ISD::FPOW , MVT::f128, Expand);
+        setOperationAction(ISD::FPOW , MVT::f64, Expand);
+        setOperationAction(ISD::FPOW , MVT::f32, Expand);
+
+        setOperationAction(ISD::SHL_PARTS, MVT::i32, Expand);
+        setOperationAction(ISD::SRA_PARTS, MVT::i32, Expand);
+        setOperationAction(ISD::SRL_PARTS, MVT::i32, Expand);
+
+        // Expands to [SU]MUL_LOHI.
+        setOperationAction(ISD::MULHU,     MVT::i32, Expand);
+        setOperationAction(ISD::MULHS,     MVT::i32, Expand);
+        setOperationAction(ISD::MUL,       MVT::i32, Expand);
+
+        if (Subtarget->useSoftMulDiv()) {
+            // .umul works for both signed and unsigned
+            setOperationAction(ISD::SMUL_LOHI, MVT::i32, Expand);
+            setOperationAction(ISD::UMUL_LOHI, MVT::i32, Expand);
+            setLibcallName(RTLIB::MUL_I32, ".umul");
+
+            setOperationAction(ISD::SDIV, MVT::i32, Expand);
+            setLibcallName(RTLIB::SDIV_I32, ".div");
+
+            setOperationAction(ISD::UDIV, MVT::i32, Expand);
+            setLibcallName(RTLIB::UDIV_I32, ".udiv");
+
+            setLibcallName(RTLIB::SREM_I32, ".rem");
+            setLibcallName(RTLIB::UREM_I32, ".urem");
+        }
+
+        if (Subtarget->is64Bit()) {
+            setOperationAction(ISD::UMUL_LOHI, MVT::i64, Expand);
+            setOperationAction(ISD::SMUL_LOHI, MVT::i64, Expand);
+            setOperationAction(ISD::MULHU,     MVT::i64, Expand);
+            setOperationAction(ISD::MULHS,     MVT::i64, Expand);
+
+            setOperationAction(ISD::UMULO,     MVT::i64, Custom);
+            setOperationAction(ISD::SMULO,     MVT::i64, Custom);
+
+            setOperationAction(ISD::SHL_PARTS, MVT::i64, Expand);
+            setOperationAction(ISD::SRA_PARTS, MVT::i64, Expand);
+            setOperationAction(ISD::SRL_PARTS, MVT::i64, Expand);
+        }
+
+        // VASTART needs to be custom lowered to use the VarArgsFrameIndex.
+        setOperationAction(ISD::VASTART           , MVT::Other, Custom);
+        // VAARG needs to be lowered to not do unaligned accesses for doubles.
+        setOperationAction(ISD::VAARG             , MVT::Other, Custom);
+
+        setOperationAction(ISD::TRAP              , MVT::Other, Legal);
+        setOperationAction(ISD::DEBUGTRAP         , MVT::Other, Legal);
+
+        // Use the default implementation.
+        setOperationAction(ISD::VACOPY            , MVT::Other, Expand);
+        setOperationAction(ISD::VAEND             , MVT::Other, Expand);
+        setOperationAction(ISD::STACKSAVE         , MVT::Other, Expand);
+        setOperationAction(ISD::STACKRESTORE      , MVT::Other, Expand);
+        setOperationAction(ISD::DYNAMIC_STACKALLOC, MVT::i32  , Custom);
+
+        setStackPointerRegisterToSaveRestore(SP::O6);
+
+        setOperationAction(ISD::CTPOP, MVT::i32,
+                Subtarget->usePopc() ? Legal : Expand);
+
+        if (Subtarget->isV9() && Subtarget->hasHardQuad()) {
+            setOperationAction(ISD::LOAD, MVT::f128, Legal);
+            setOperationAction(ISD::STORE, MVT::f128, Legal);
+        } else {
+            setOperationAction(ISD::LOAD, MVT::f128, Custom);
+            setOperationAction(ISD::STORE, MVT::f128, Custom);
+        }
+
+        if (Subtarget->hasHardQuad()) {
+            setOperationAction(ISD::FADD,  MVT::f128, Legal);
+            setOperationAction(ISD::FSUB,  MVT::f128, Legal);
+            setOperationAction(ISD::FMUL,  MVT::f128, Legal);
+            setOperationAction(ISD::FDIV,  MVT::f128, Legal);
+            setOperationAction(ISD::FSQRT, MVT::f128, Legal);
+            setOperationAction(ISD::FP_EXTEND, MVT::f128, Legal);
+            setOperationAction(ISD::FP_ROUND,  MVT::f64, Legal);
+            if (Subtarget->isV9()) {
+                setOperationAction(ISD::FNEG, MVT::f128, Legal);
+                setOperationAction(ISD::FABS, MVT::f128, Legal);
+            } else {
+                setOperationAction(ISD::FNEG, MVT::f128, Custom);
+                setOperationAction(ISD::FABS, MVT::f128, Custom);
+            }
+
+            if (!Subtarget->is64Bit()) {
+                setLibcallName(RTLIB::FPTOSINT_F128_I64, "_Q_qtoll");
+                setLibcallName(RTLIB::FPTOUINT_F128_I64, "_Q_qtoull");
+                setLibcallName(RTLIB::SINTTOFP_I64_F128, "_Q_lltoq");
+                setLibcallName(RTLIB::UINTTOFP_I64_F128, "_Q_ulltoq");
+            }
+
+        } else {
+            // Custom legalize f128 operations.
+
+            setOperationAction(ISD::FADD,  MVT::f128, Custom);
+            setOperationAction(ISD::FSUB,  MVT::f128, Custom);
+            setOperationAction(ISD::FMUL,  MVT::f128, Custom);
+            setOperationAction(ISD::FDIV,  MVT::f128, Custom);
+            setOperationAction(ISD::FSQRT, MVT::f128, Custom);
+            setOperationAction(ISD::FNEG,  MVT::f128, Custom);
+            setOperationAction(ISD::FABS,  MVT::f128, Custom);
+
+            setOperationAction(ISD::FP_EXTEND, MVT::f128, Custom);
+            setOperationAction(ISD::FP_ROUND,  MVT::f64, Custom);
+            setOperationAction(ISD::FP_ROUND,  MVT::f32, Custom);
+
+            // Setup Runtime library names.
+            if (Subtarget->is64Bit() && !Subtarget->useSoftFloat()) {
+                setLibcallName(RTLIB::ADD_F128,  "_Qp_add");
+                setLibcallName(RTLIB::SUB_F128,  "_Qp_sub");
+                setLibcallName(RTLIB::MUL_F128,  "_Qp_mul");
+                setLibcallName(RTLIB::DIV_F128,  "_Qp_div");
+                setLibcallName(RTLIB::SQRT_F128, "_Qp_sqrt");
+                setLibcallName(RTLIB::FPTOSINT_F128_I32, "_Qp_qtoi");
+                setLibcallName(RTLIB::FPTOUINT_F128_I32, "_Qp_qtoui");
+                setLibcallName(RTLIB::SINTTOFP_I32_F128, "_Qp_itoq");
+                setLibcallName(RTLIB::UINTTOFP_I32_F128, "_Qp_uitoq");
+                setLibcallName(RTLIB::FPTOSINT_F128_I64, "_Qp_qtox");
+                setLibcallName(RTLIB::FPTOUINT_F128_I64, "_Qp_qtoux");
+                setLibcallName(RTLIB::SINTTOFP_I64_F128, "_Qp_xtoq");
+                setLibcallName(RTLIB::UINTTOFP_I64_F128, "_Qp_uxtoq");
+                setLibcallName(RTLIB::FPEXT_F32_F128, "_Qp_stoq");
+                setLibcallName(RTLIB::FPEXT_F64_F128, "_Qp_dtoq");
+                setLibcallName(RTLIB::FPROUND_F128_F32, "_Qp_qtos");
+                setLibcallName(RTLIB::FPROUND_F128_F64, "_Qp_qtod");
+            } else if (!Subtarget->useSoftFloat()) {
+                setLibcallName(RTLIB::ADD_F128,  "_Q_add");
+                setLibcallName(RTLIB::SUB_F128,  "_Q_sub");
+                setLibcallName(RTLIB::MUL_F128,  "_Q_mul");
+                setLibcallName(RTLIB::DIV_F128,  "_Q_div");
+                setLibcallName(RTLIB::SQRT_F128, "_Q_sqrt");
+                setLibcallName(RTLIB::FPTOSINT_F128_I32, "_Q_qtoi");
+                setLibcallName(RTLIB::FPTOUINT_F128_I32, "_Q_qtou");
+                setLibcallName(RTLIB::SINTTOFP_I32_F128, "_Q_itoq");
+                setLibcallName(RTLIB::UINTTOFP_I32_F128, "_Q_utoq");
+                setLibcallName(RTLIB::FPTOSINT_F128_I64, "_Q_qtoll");
+                setLibcallName(RTLIB::FPTOUINT_F128_I64, "_Q_qtoull");
+                setLibcallName(RTLIB::SINTTOFP_I64_F128, "_Q_lltoq");
+                setLibcallName(RTLIB::UINTTOFP_I64_F128, "_Q_ulltoq");
+                setLibcallName(RTLIB::FPEXT_F32_F128, "_Q_stoq");
+                setLibcallName(RTLIB::FPEXT_F64_F128, "_Q_dtoq");
+                setLibcallName(RTLIB::FPROUND_F128_F32, "_Q_qtos");
+                setLibcallName(RTLIB::FPROUND_F128_F64, "_Q_qtod");
+            }
+        }
+
+        if (Subtarget->fixAllFDIVSQRT()) {
+            // Promote FDIVS and FSQRTS to FDIVD and FSQRTD instructions instead as
+            // the former instructions generate errata on LEON processors.
+            setOperationAction(ISD::FDIV, MVT::f32, Promote);
+            setOperationAction(ISD::FSQRT, MVT::f32, Promote);
+        }
+
+        if (Subtarget->hasNoFMULS()) {
+            setOperationAction(ISD::FMUL, MVT::f32, Promote);
+        }
+
+        // Custom combine bitcast between f64 and v2i32
+        if (!Subtarget->is64Bit())
+            setTargetDAGCombine(ISD::BITCAST);
+
+        if (Subtarget->hasLeonCycleCounter())
+            setOperationAction(ISD::READCYCLECOUNTER, MVT::i64, Custom);
+
+        setOperationAction(ISD::INTRINSIC_WO_CHAIN, MVT::Other, Custom);
+
+        setMinFunctionAlignment(Align(4));
+
+        computeRegisterProperties(Subtarget->getRegisterInfo());
     }
-    // Truncating/extending stores/loads are also not supported.
-    for (MVT VT : MVT::integer_fixedlen_vector_valuetypes()) {
-      setLoadExtAction(ISD::SEXTLOAD, VT, MVT::v2i32, Expand);
-      setLoadExtAction(ISD::ZEXTLOAD, VT, MVT::v2i32, Expand);
-      setLoadExtAction(ISD::EXTLOAD, VT, MVT::v2i32, Expand);
-
-      setLoadExtAction(ISD::SEXTLOAD, MVT::v2i32, VT, Expand);
-      setLoadExtAction(ISD::ZEXTLOAD, MVT::v2i32, VT, Expand);
-      setLoadExtAction(ISD::EXTLOAD, MVT::v2i32, VT, Expand);
-
-      setTruncStoreAction(VT, MVT::v2i32, Expand);
-      setTruncStoreAction(MVT::v2i32, VT, Expand);
-    }
-    // However, load and store *are* legal.
-    setOperationAction(ISD::LOAD, MVT::v2i32, Legal);
-    setOperationAction(ISD::STORE, MVT::v2i32, Legal);
-    setOperationAction(ISD::EXTRACT_VECTOR_ELT, MVT::v2i32, Legal);
-    setOperationAction(ISD::BUILD_VECTOR, MVT::v2i32, Legal);
-
-    // And we need to promote i64 loads/stores into vector load/store
-    setOperationAction(ISD::LOAD, MVT::i64, Custom);
-    setOperationAction(ISD::STORE, MVT::i64, Custom);
-
-    // Sadly, this doesn't work:
-    //    AddPromotedToType(ISD::LOAD, MVT::i64, MVT::v2i32);
-    //    AddPromotedToType(ISD::STORE, MVT::i64, MVT::v2i32);
-  }
-
-  // Turn FP extload into load/fpextend
-  for (MVT VT : MVT::fp_valuetypes()) {
-    setLoadExtAction(ISD::EXTLOAD, VT, MVT::f16, Expand);
-    setLoadExtAction(ISD::EXTLOAD, VT, MVT::f32, Expand);
-    setLoadExtAction(ISD::EXTLOAD, VT, MVT::f64, Expand);
-  }
-
-  // Sparc doesn't have i1 sign extending load
-  for (MVT VT : MVT::integer_valuetypes())
-    setLoadExtAction(ISD::SEXTLOAD, VT, MVT::i1, Promote);
-
-  // Turn FP truncstore into trunc + store.
-  setTruncStoreAction(MVT::f32, MVT::f16, Expand);
-  setTruncStoreAction(MVT::f64, MVT::f16, Expand);
-  setTruncStoreAction(MVT::f64, MVT::f32, Expand);
-  setTruncStoreAction(MVT::f128, MVT::f16, Expand);
-  setTruncStoreAction(MVT::f128, MVT::f32, Expand);
-  setTruncStoreAction(MVT::f128, MVT::f64, Expand);
-
-  // Custom legalize GlobalAddress nodes into LO/HI parts.
-  setOperationAction(ISD::GlobalAddress, PtrVT, Custom);
-  setOperationAction(ISD::GlobalTLSAddress, PtrVT, Custom);
-  setOperationAction(ISD::ConstantPool, PtrVT, Custom);
-  setOperationAction(ISD::BlockAddress, PtrVT, Custom);
-
-  // Sparc doesn't have sext_inreg, replace them with shl/sra
-  setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i16, Expand);
-  setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i8 , Expand);
-  setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i1 , Expand);
-
-  // Sparc has no REM or DIVREM operations.
-  setOperationAction(ISD::UREM, MVT::i32, Expand);
-  setOperationAction(ISD::SREM, MVT::i32, Expand);
-  setOperationAction(ISD::SDIVREM, MVT::i32, Expand);
-  setOperationAction(ISD::UDIVREM, MVT::i32, Expand);
-
-  // ... nor does SparcV9.
-  if (Subtarget->is64Bit()) {
-    setOperationAction(ISD::UREM, MVT::i64, Expand);
-    setOperationAction(ISD::SREM, MVT::i64, Expand);
-    setOperationAction(ISD::SDIVREM, MVT::i64, Expand);
-    setOperationAction(ISD::UDIVREM, MVT::i64, Expand);
-  }
-
-  // Custom expand fp<->sint
-  setOperationAction(ISD::FP_TO_SINT, MVT::i32, Custom);
-  setOperationAction(ISD::SINT_TO_FP, MVT::i32, Custom);
-  setOperationAction(ISD::FP_TO_SINT, MVT::i64, Custom);
-  setOperationAction(ISD::SINT_TO_FP, MVT::i64, Custom);
-
-  // Custom Expand fp<->uint
-  setOperationAction(ISD::FP_TO_UINT, MVT::i32, Custom);
-  setOperationAction(ISD::UINT_TO_FP, MVT::i32, Custom);
-  setOperationAction(ISD::FP_TO_UINT, MVT::i64, Custom);
-  setOperationAction(ISD::UINT_TO_FP, MVT::i64, Custom);
-
-  // Lower f16 conversion operations into library calls
-  setOperationAction(ISD::FP16_TO_FP, MVT::f32, Expand);
-  setOperationAction(ISD::FP_TO_FP16, MVT::f32, Expand);
-  setOperationAction(ISD::FP16_TO_FP, MVT::f64, Expand);
-  setOperationAction(ISD::FP_TO_FP16, MVT::f64, Expand);
-  setOperationAction(ISD::FP16_TO_FP, MVT::f128, Expand);
-  setOperationAction(ISD::FP_TO_FP16, MVT::f128, Expand);
-
-  setOperationAction(ISD::BITCAST, MVT::f32, Expand);
-  setOperationAction(ISD::BITCAST, MVT::i32, Expand);
-
-  // Sparc has no select or setcc: expand to SELECT_CC.
-  setOperationAction(ISD::SELECT, MVT::i32, Expand);
-  setOperationAction(ISD::SELECT, MVT::f32, Expand);
-  setOperationAction(ISD::SELECT, MVT::f64, Expand);
-  setOperationAction(ISD::SELECT, MVT::f128, Expand);
-
-  setOperationAction(ISD::SETCC, MVT::i32, Expand);
-  setOperationAction(ISD::SETCC, MVT::f32, Expand);
-  setOperationAction(ISD::SETCC, MVT::f64, Expand);
-  setOperationAction(ISD::SETCC, MVT::f128, Expand);
-
-  // Sparc doesn't have BRCOND either, it has BR_CC.
-  setOperationAction(ISD::BRCOND, MVT::Other, Expand);
-  setOperationAction(ISD::BRIND, MVT::Other, Expand);
-  setOperationAction(ISD::BR_JT, MVT::Other, Expand);
-  setOperationAction(ISD::BR_CC, MVT::i32, Custom);
-  setOperationAction(ISD::BR_CC, MVT::f32, Custom);
-  setOperationAction(ISD::BR_CC, MVT::f64, Custom);
-  setOperationAction(ISD::BR_CC, MVT::f128, Custom);
-
-  setOperationAction(ISD::SELECT_CC, MVT::i32, Custom);
-  setOperationAction(ISD::SELECT_CC, MVT::f32, Custom);
-  setOperationAction(ISD::SELECT_CC, MVT::f64, Custom);
-  setOperationAction(ISD::SELECT_CC, MVT::f128, Custom);
-
-  setOperationAction(ISD::ADDC, MVT::i32, Custom);
-  setOperationAction(ISD::ADDE, MVT::i32, Custom);
-  setOperationAction(ISD::SUBC, MVT::i32, Custom);
-  setOperationAction(ISD::SUBE, MVT::i32, Custom);
-
-  if (Subtarget->is64Bit()) {
-    setOperationAction(ISD::ADDC, MVT::i64, Custom);
-    setOperationAction(ISD::ADDE, MVT::i64, Custom);
-    setOperationAction(ISD::SUBC, MVT::i64, Custom);
-    setOperationAction(ISD::SUBE, MVT::i64, Custom);
-    setOperationAction(ISD::BITCAST, MVT::f64, Expand);
-    setOperationAction(ISD::BITCAST, MVT::i64, Expand);
-    setOperationAction(ISD::SELECT, MVT::i64, Expand);
-    setOperationAction(ISD::SETCC, MVT::i64, Expand);
-    setOperationAction(ISD::BR_CC, MVT::i64, Custom);
-    setOperationAction(ISD::SELECT_CC, MVT::i64, Custom);
-
-    setOperationAction(ISD::CTPOP, MVT::i64,
-                       Subtarget->usePopc() ? Legal : Expand);
-    setOperationAction(ISD::CTTZ , MVT::i64, Expand);
-    setOperationAction(ISD::CTLZ , MVT::i64, Expand);
-    setOperationAction(ISD::BSWAP, MVT::i64, Expand);
-    setOperationAction(ISD::ROTL , MVT::i64, Expand);
-    setOperationAction(ISD::ROTR , MVT::i64, Expand);
-    setOperationAction(ISD::DYNAMIC_STACKALLOC, MVT::i64, Custom);
-  }
-
-  // ATOMICs.
-  // Atomics are supported on SparcV9. 32-bit atomics are also
-  // supported by some Leon SparcV8 variants. Otherwise, atomics
-  // are unsupported.
-  if (Subtarget->isV9())
-    setMaxAtomicSizeInBitsSupported(64);
-  else if (Subtarget->hasLeonCasa())
-    setMaxAtomicSizeInBitsSupported(32);
-  else
-    setMaxAtomicSizeInBitsSupported(0);
-
-  setMinCmpXchgSizeInBits(32);
-
-  setOperationAction(ISD::ATOMIC_SWAP, MVT::i32, Legal);
-
-  setOperationAction(ISD::ATOMIC_FENCE, MVT::Other, Legal);
-
-  // Custom Lower Atomic LOAD/STORE
-  setOperationAction(ISD::ATOMIC_LOAD, MVT::i32, Custom);
-  setOperationAction(ISD::ATOMIC_STORE, MVT::i32, Custom);
-
-  if (Subtarget->is64Bit()) {
-    setOperationAction(ISD::ATOMIC_CMP_SWAP, MVT::i64, Legal);
-    setOperationAction(ISD::ATOMIC_SWAP, MVT::i64, Legal);
-    setOperationAction(ISD::ATOMIC_LOAD, MVT::i64, Custom);
-    setOperationAction(ISD::ATOMIC_STORE, MVT::i64, Custom);
-  }
-
-  if (!Subtarget->is64Bit()) {
-    // These libcalls are not available in 32-bit.
-    setLibcallName(RTLIB::SHL_I128, nullptr);
-    setLibcallName(RTLIB::SRL_I128, nullptr);
-    setLibcallName(RTLIB::SRA_I128, nullptr);
-  }
-
-  if (!Subtarget->isV9()) {
-    // SparcV8 does not have FNEGD and FABSD.
-    setOperationAction(ISD::FNEG, MVT::f64, Custom);
-    setOperationAction(ISD::FABS, MVT::f64, Custom);
-  }
-
-  setOperationAction(ISD::FSIN , MVT::f128, Expand);
-  setOperationAction(ISD::FCOS , MVT::f128, Expand);
-  setOperationAction(ISD::FSINCOS, MVT::f128, Expand);
-  setOperationAction(ISD::FREM , MVT::f128, Expand);
-  setOperationAction(ISD::FMA  , MVT::f128, Expand);
-  setOperationAction(ISD::FSIN , MVT::f64, Expand);
-  setOperationAction(ISD::FCOS , MVT::f64, Expand);
-  setOperationAction(ISD::FSINCOS, MVT::f64, Expand);
-  setOperationAction(ISD::FREM , MVT::f64, Expand);
-  setOperationAction(ISD::FMA  , MVT::f64, Expand);
-  setOperationAction(ISD::FSIN , MVT::f32, Expand);
-  setOperationAction(ISD::FCOS , MVT::f32, Expand);
-  setOperationAction(ISD::FSINCOS, MVT::f32, Expand);
-  setOperationAction(ISD::FREM , MVT::f32, Expand);
-  setOperationAction(ISD::FMA  , MVT::f32, Expand);
-  setOperationAction(ISD::CTTZ , MVT::i32, Expand);
-  setOperationAction(ISD::CTLZ , MVT::i32, Expand);
-  setOperationAction(ISD::ROTL , MVT::i32, Expand);
-  setOperationAction(ISD::ROTR , MVT::i32, Expand);
-  setOperationAction(ISD::BSWAP, MVT::i32, Expand);
-  setOperationAction(ISD::FCOPYSIGN, MVT::f128, Expand);
-  setOperationAction(ISD::FCOPYSIGN, MVT::f64, Expand);
-  setOperationAction(ISD::FCOPYSIGN, MVT::f32, Expand);
-  setOperationAction(ISD::FPOW , MVT::f128, Expand);
-  setOperationAction(ISD::FPOW , MVT::f64, Expand);
-  setOperationAction(ISD::FPOW , MVT::f32, Expand);
-
-  setOperationAction(ISD::SHL_PARTS, MVT::i32, Expand);
-  setOperationAction(ISD::SRA_PARTS, MVT::i32, Expand);
-  setOperationAction(ISD::SRL_PARTS, MVT::i32, Expand);
-
-  // Expands to [SU]MUL_LOHI.
-  setOperationAction(ISD::MULHU,     MVT::i32, Expand);
-  setOperationAction(ISD::MULHS,     MVT::i32, Expand);
-  setOperationAction(ISD::MUL,       MVT::i32, Expand);
-
-  if (Subtarget->useSoftMulDiv()) {
-    // .umul works for both signed and unsigned
-    setOperationAction(ISD::SMUL_LOHI, MVT::i32, Expand);
-    setOperationAction(ISD::UMUL_LOHI, MVT::i32, Expand);
-    setLibcallName(RTLIB::MUL_I32, ".umul");
-
-    setOperationAction(ISD::SDIV, MVT::i32, Expand);
-    setLibcallName(RTLIB::SDIV_I32, ".div");
-
-    setOperationAction(ISD::UDIV, MVT::i32, Expand);
-    setLibcallName(RTLIB::UDIV_I32, ".udiv");
-
-    setLibcallName(RTLIB::SREM_I32, ".rem");
-    setLibcallName(RTLIB::UREM_I32, ".urem");
-  }
-
-  if (Subtarget->is64Bit()) {
-    setOperationAction(ISD::UMUL_LOHI, MVT::i64, Expand);
-    setOperationAction(ISD::SMUL_LOHI, MVT::i64, Expand);
-    setOperationAction(ISD::MULHU,     MVT::i64, Expand);
-    setOperationAction(ISD::MULHS,     MVT::i64, Expand);
-
-    setOperationAction(ISD::UMULO,     MVT::i64, Custom);
-    setOperationAction(ISD::SMULO,     MVT::i64, Custom);
-
-    setOperationAction(ISD::SHL_PARTS, MVT::i64, Expand);
-    setOperationAction(ISD::SRA_PARTS, MVT::i64, Expand);
-    setOperationAction(ISD::SRL_PARTS, MVT::i64, Expand);
-  }
-
-  // VASTART needs to be custom lowered to use the VarArgsFrameIndex.
-  setOperationAction(ISD::VASTART           , MVT::Other, Custom);
-  // VAARG needs to be lowered to not do unaligned accesses for doubles.
-  setOperationAction(ISD::VAARG             , MVT::Other, Custom);
-
-  setOperationAction(ISD::TRAP              , MVT::Other, Legal);
-  setOperationAction(ISD::DEBUGTRAP         , MVT::Other, Legal);
-
-  // Use the default implementation.
-  setOperationAction(ISD::VACOPY            , MVT::Other, Expand);
-  setOperationAction(ISD::VAEND             , MVT::Other, Expand);
-  setOperationAction(ISD::STACKSAVE         , MVT::Other, Expand);
-  setOperationAction(ISD::STACKRESTORE      , MVT::Other, Expand);
-  setOperationAction(ISD::DYNAMIC_STACKALLOC, MVT::i32  , Custom);
-
-  setStackPointerRegisterToSaveRestore(SP::O6);
-
-  setOperationAction(ISD::CTPOP, MVT::i32,
-                     Subtarget->usePopc() ? Legal : Expand);
-
-  if (Subtarget->isV9() && Subtarget->hasHardQuad()) {
-    setOperationAction(ISD::LOAD, MVT::f128, Legal);
-    setOperationAction(ISD::STORE, MVT::f128, Legal);
-  } else {
-    setOperationAction(ISD::LOAD, MVT::f128, Custom);
-    setOperationAction(ISD::STORE, MVT::f128, Custom);
-  }
-
-  if (Subtarget->hasHardQuad()) {
-    setOperationAction(ISD::FADD,  MVT::f128, Legal);
-    setOperationAction(ISD::FSUB,  MVT::f128, Legal);
-    setOperationAction(ISD::FMUL,  MVT::f128, Legal);
-    setOperationAction(ISD::FDIV,  MVT::f128, Legal);
-    setOperationAction(ISD::FSQRT, MVT::f128, Legal);
-    setOperationAction(ISD::FP_EXTEND, MVT::f128, Legal);
-    setOperationAction(ISD::FP_ROUND,  MVT::f64, Legal);
-    if (Subtarget->isV9()) {
-      setOperationAction(ISD::FNEG, MVT::f128, Legal);
-      setOperationAction(ISD::FABS, MVT::f128, Legal);
-    } else {
-      setOperationAction(ISD::FNEG, MVT::f128, Custom);
-      setOperationAction(ISD::FABS, MVT::f128, Custom);
-    }
-
-    if (!Subtarget->is64Bit()) {
-      setLibcallName(RTLIB::FPTOSINT_F128_I64, "_Q_qtoll");
-      setLibcallName(RTLIB::FPTOUINT_F128_I64, "_Q_qtoull");
-      setLibcallName(RTLIB::SINTTOFP_I64_F128, "_Q_lltoq");
-      setLibcallName(RTLIB::UINTTOFP_I64_F128, "_Q_ulltoq");
-    }
-
-  } else {
-    // Custom legalize f128 operations.
-
-    setOperationAction(ISD::FADD,  MVT::f128, Custom);
-    setOperationAction(ISD::FSUB,  MVT::f128, Custom);
-    setOperationAction(ISD::FMUL,  MVT::f128, Custom);
-    setOperationAction(ISD::FDIV,  MVT::f128, Custom);
-    setOperationAction(ISD::FSQRT, MVT::f128, Custom);
-    setOperationAction(ISD::FNEG,  MVT::f128, Custom);
-    setOperationAction(ISD::FABS,  MVT::f128, Custom);
-
-    setOperationAction(ISD::FP_EXTEND, MVT::f128, Custom);
-    setOperationAction(ISD::FP_ROUND,  MVT::f64, Custom);
-    setOperationAction(ISD::FP_ROUND,  MVT::f32, Custom);
-
-    // Setup Runtime library names.
-    if (Subtarget->is64Bit() && !Subtarget->useSoftFloat()) {
-      setLibcallName(RTLIB::ADD_F128,  "_Qp_add");
-      setLibcallName(RTLIB::SUB_F128,  "_Qp_sub");
-      setLibcallName(RTLIB::MUL_F128,  "_Qp_mul");
-      setLibcallName(RTLIB::DIV_F128,  "_Qp_div");
-      setLibcallName(RTLIB::SQRT_F128, "_Qp_sqrt");
-      setLibcallName(RTLIB::FPTOSINT_F128_I32, "_Qp_qtoi");
-      setLibcallName(RTLIB::FPTOUINT_F128_I32, "_Qp_qtoui");
-      setLibcallName(RTLIB::SINTTOFP_I32_F128, "_Qp_itoq");
-      setLibcallName(RTLIB::UINTTOFP_I32_F128, "_Qp_uitoq");
-      setLibcallName(RTLIB::FPTOSINT_F128_I64, "_Qp_qtox");
-      setLibcallName(RTLIB::FPTOUINT_F128_I64, "_Qp_qtoux");
-      setLibcallName(RTLIB::SINTTOFP_I64_F128, "_Qp_xtoq");
-      setLibcallName(RTLIB::UINTTOFP_I64_F128, "_Qp_uxtoq");
-      setLibcallName(RTLIB::FPEXT_F32_F128, "_Qp_stoq");
-      setLibcallName(RTLIB::FPEXT_F64_F128, "_Qp_dtoq");
-      setLibcallName(RTLIB::FPROUND_F128_F32, "_Qp_qtos");
-      setLibcallName(RTLIB::FPROUND_F128_F64, "_Qp_qtod");
-    } else if (!Subtarget->useSoftFloat()) {
-      setLibcallName(RTLIB::ADD_F128,  "_Q_add");
-      setLibcallName(RTLIB::SUB_F128,  "_Q_sub");
-      setLibcallName(RTLIB::MUL_F128,  "_Q_mul");
-      setLibcallName(RTLIB::DIV_F128,  "_Q_div");
-      setLibcallName(RTLIB::SQRT_F128, "_Q_sqrt");
-      setLibcallName(RTLIB::FPTOSINT_F128_I32, "_Q_qtoi");
-      setLibcallName(RTLIB::FPTOUINT_F128_I32, "_Q_qtou");
-      setLibcallName(RTLIB::SINTTOFP_I32_F128, "_Q_itoq");
-      setLibcallName(RTLIB::UINTTOFP_I32_F128, "_Q_utoq");
-      setLibcallName(RTLIB::FPTOSINT_F128_I64, "_Q_qtoll");
-      setLibcallName(RTLIB::FPTOUINT_F128_I64, "_Q_qtoull");
-      setLibcallName(RTLIB::SINTTOFP_I64_F128, "_Q_lltoq");
-      setLibcallName(RTLIB::UINTTOFP_I64_F128, "_Q_ulltoq");
-      setLibcallName(RTLIB::FPEXT_F32_F128, "_Q_stoq");
-      setLibcallName(RTLIB::FPEXT_F64_F128, "_Q_dtoq");
-      setLibcallName(RTLIB::FPROUND_F128_F32, "_Q_qtos");
-      setLibcallName(RTLIB::FPROUND_F128_F64, "_Q_qtod");
-    }
-  }
-
-  if (Subtarget->fixAllFDIVSQRT()) {
-    // Promote FDIVS and FSQRTS to FDIVD and FSQRTD instructions instead as
-    // the former instructions generate errata on LEON processors.
-    setOperationAction(ISD::FDIV, MVT::f32, Promote);
-    setOperationAction(ISD::FSQRT, MVT::f32, Promote);
-  }
-
-  if (Subtarget->hasNoFMULS()) {
-    setOperationAction(ISD::FMUL, MVT::f32, Promote);
-  }
-
-  // Custom combine bitcast between f64 and v2i32
-  if (!Subtarget->is64Bit())
-    setTargetDAGCombine(ISD::BITCAST);
-
-  if (Subtarget->hasLeonCycleCounter())
-    setOperationAction(ISD::READCYCLECOUNTER, MVT::i64, Custom);
-
-  setOperationAction(ISD::INTRINSIC_WO_CHAIN, MVT::Other, Custom);
-
-  setMinFunctionAlignment(Align(4));
-
-  computeRegisterProperties(Subtarget->getRegisterInfo());
-}
 
 bool SparcTargetLowering::useSoftFloat() const {
   return Subtarget->useSoftFloat();

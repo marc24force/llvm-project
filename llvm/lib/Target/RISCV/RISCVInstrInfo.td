@@ -1317,3 +1317,8 @@ include "RISCVInstrInfoC.td"
 include "RISCVInstrInfoB.td"
 include "RISCVInstrInfoV.td"
 include "RISCVInstrInfoZfh.td"
+
+//===----------------------------------------------------------------------===//
+// Custom extensions
+//===----------------------------------------------------------------------===//
+include "RISCVInstrSPARROW.td" //marcmod

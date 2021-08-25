@@ -29,6 +29,8 @@
 
 # Ignore sparc path
 sparc_dir.txt
+# Ignore risc path
+risc_dir.txt
 
 #==============================================================================#
 # Explicit files to ignore (only matches one).

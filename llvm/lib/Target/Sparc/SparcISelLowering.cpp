@@ -1427,15 +1427,15 @@ SparcTargetLowering::SparcTargetLowering(const TargetMachine &TM,
             addRegisterClass(MVT::f128, &SP::QFPRegsRegClass);
         }
         //marcmod
-        addRegisterClass(MVT::v4i8, &SP::IntRegsRegClass);
-        for (unsigned Op = 0; Op < ISD::BUILTIN_OP_END; ++Op) {
-            setOperationAction(Op, MVT::v4i8, Expand);
-        }
-        setOperationAction(ISD::STORE, MVT::v4i8, Legal);
-        setOperationAction(ISD::LOAD, MVT::v4i8, Legal);
-        setOperationAction(ISD::ADD, MVT::v4i8, Legal);
-        setOperationAction(ISD::SUB, MVT::v4i8, Legal);
-        setOperationAction(ISD::MUL, MVT::v4i8, Legal);
+        //addRegisterClass(MVT::v4i8, &SP::IntRegsRegClass);
+        //for (unsigned Op = 0; Op < ISD::BUILTIN_OP_END; ++Op) {
+        //    setOperationAction(Op, MVT::v4i8, Expand);
+        //}
+        //setOperationAction(ISD::STORE, MVT::v4i8, Legal);
+        //setOperationAction(ISD::LOAD, MVT::v4i8, Legal);
+        //setOperationAction(ISD::ADD, MVT::v4i8, Legal);
+        //setOperationAction(ISD::SUB, MVT::v4i8, Legal);
+        //setOperationAction(ISD::MUL, MVT::v4i8, Legal);
 
         if (Subtarget->is64Bit()) {
             addRegisterClass(MVT::i64, &SP::I64RegsRegClass);

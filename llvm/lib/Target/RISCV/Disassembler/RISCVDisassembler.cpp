@@ -294,31 +294,31 @@ static DecodeStatus decodeSImmOperand(MCInst &Inst, uint64_t Imm,
   return MCDisassembler::Success;
 }
 
-//marcmod
-static DecodeStatus DecodeIMM5(MCInst &MI, uint64_t Imm,
-                                uint64_t Address, const void *Decoder) {
-  unsigned tgt;
-  unsigned exp, plus, sub;
-  plus = Imm&0b10000?2:0;       //(fieldFromInstruction(insn, 4, 1)<<1);
-  sub = Imm&0b00001;            //fieldFromInstruction(insn, 0, 1);
-  exp = 1 << ((Imm&0b01110)>>1); //fieldFromInstruction(insn, 1, 3);
-  tgt = exp - sub + plus;
-  MI.addOperand(MCOperand::createImm(tgt));
-  return MCDisassembler::Success;
-}
-//marcmod
-static DecodeStatus DecodeSIMM5(MCInst &MI, uint64_t Imm,
-                                 uint64_t Address, const void *Decoder) {
-  signed tgt;
-  signed sign;
-  unsigned exp, sub;
-  sign = Imm&0b10000?-1:1;       //(fieldFromInstruction(insn, 4, 1)<<1);
-  sub = Imm&0b00001;            //fieldFromInstruction(insn, 0, 1);
-  exp = 1 << ((Imm&0b01110)>>1); //fieldFromInstruction(insn, 1, 3);
-  tgt = sign * (exp - sub);
-  MI.addOperand(MCOperand::createImm(tgt));
-  return MCDisassembler::Success;
-}
+////marcmod
+//static DecodeStatus DecodeIMM5(MCInst &MI, uint64_t Imm,
+//                                uint64_t Address, const void *Decoder) {
+//  unsigned tgt;
+//  unsigned exp, plus, sub;
+//  plus = Imm&0b10000?2:0;       //(fieldFromInstruction(insn, 4, 1)<<1);
+//  sub = Imm&0b00001;            //fieldFromInstruction(insn, 0, 1);
+//  exp = 1 << ((Imm&0b01110)>>1); //fieldFromInstruction(insn, 1, 3);
+//  tgt = exp - sub + plus;
+//  MI.addOperand(MCOperand::createImm(tgt));
+//  return MCDisassembler::Success;
+//}
+////marcmod
+//static DecodeStatus DecodeSIMM5(MCInst &MI, uint64_t Imm,
+//                                 uint64_t Address, const void *Decoder) {
+//  signed tgt;
+//  signed sign;
+//  unsigned exp, sub;
+//  sign = Imm&0b10000?-1:1;       //(fieldFromInstruction(insn, 4, 1)<<1);
+//  sub = Imm&0b00001;            //fieldFromInstruction(insn, 0, 1);
+//  exp = 1 << ((Imm&0b01110)>>1); //fieldFromInstruction(insn, 1, 3);
+//  tgt = sign * (exp - sub);
+//  MI.addOperand(MCOperand::createImm(tgt));
+//  return MCDisassembler::Success;
+//}
 
 template <unsigned N>
 static DecodeStatus decodeSImmNonZeroOperand(MCInst &Inst, uint64_t Imm,

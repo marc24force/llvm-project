@@ -79,18 +79,18 @@ public:
   unsigned getImmOpValue(const MCInst &MI, unsigned OpNo,
                          SmallVectorImpl<MCFixup> &Fixups,
                          const MCSubtargetInfo &STI) const;
-  //marcmod
-  unsigned imm5OpEncoder(const int64_t imm) const;
-  //marcmod
-  unsigned getImm5OpValue(const MCInst &MI, unsigned OpNo,
-                            SmallVectorImpl<MCFixup> &Fixups,
-                            const MCSubtargetInfo &STI) const;
-  //marcmod
-  unsigned sImm5OpEncoder(const int64_t imm) const;
-  //marcmod
-  unsigned getSImm5OpValue(const MCInst &MI, unsigned OpNo,
-                            SmallVectorImpl<MCFixup> &Fixups,
-                            const MCSubtargetInfo &STI) const;
+//  //marcmod
+//  unsigned imm5OpEncoder(const int64_t imm) const;
+//  //marcmod
+//  unsigned getImm5OpValue(const MCInst &MI, unsigned OpNo,
+//                            SmallVectorImpl<MCFixup> &Fixups,
+//                            const MCSubtargetInfo &STI) const;
+//  //marcmod
+//  unsigned sImm5OpEncoder(const int64_t imm) const;
+//  //marcmod
+//  unsigned getSImm5OpValue(const MCInst &MI, unsigned OpNo,
+//                            SmallVectorImpl<MCFixup> &Fixups,
+//                            const MCSubtargetInfo &STI) const;
 
   unsigned getVMaskReg(const MCInst &MI, unsigned OpNo,
                        SmallVectorImpl<MCFixup> &Fixups,
@@ -402,123 +402,123 @@ unsigned RISCVMCCodeEmitter::getImmOpValue(const MCInst &MI, unsigned OpNo,
 }
 
 //marcmod 
-unsigned 
-RISCVMCCodeEmitter::imm5OpEncoder(const int64_t imm) const{
-    int64_t value = imm;
-    if (value == 0) return 0b00001;
-    if (value > 255 || value < 0) 
-        report_fatal_error("Invalid value for ImmOp5: Value must be within [0, 255] range");
-    unsigned result = 0;
-    if (value%2 == 1) {
-        value++;
-        result |= 1;
-    }
-    if ((value&2)==2 && value>2) {
-        value -= 2;
-        result |= 0b10000;
-    }
-    result |= __builtin_ctz(value)<<1;
-    //verification
-    unsigned plus = (result>>3)&2;
-    unsigned sub = result&1;
-    unsigned exp = 1<<((result>>1)&0b111);
-    unsigned tgt = exp+plus-sub;
-    if (tgt != imm) 
-        report_fatal_error("Invalid value for SImmOp5: Value must be representable by immediate{4}*2+2^(immediate{3-1})-immediate{0}");
-
-    return result;
-}
-
-//marcmod 
-unsigned 
-RISCVMCCodeEmitter::sImm5OpEncoder(const int64_t imm) const{
-    int64_t value = imm;
-    if (value == 0) return 0b00001;
-    if (value>127 || value < -128) 
-        report_fatal_error("Invalid value for SImmOp5: Value must be within [127, -128] range");
-    unsigned result = 0;
-    if (value <0){
-        result = 0b10000;
-        value = -value;
-    }
-    if (value%2 == 1) {
-        value++;
-        result |= 1;
-    }
-    result |= __builtin_ctz(value)<<1;
-    //verification
-    signed sign = (result>>4)? -1:1;
-    unsigned sub = result&1;
-    unsigned exp = 1<<((result>>1)&0b111);
-    signed tgt = sign * (exp - sub);
-    if (tgt != imm) 
-        report_fatal_error("Invalid value for SImmOp5: Value must be representable by immediate{4}?-1:1*(2^(immediate{3-1})-immediate{0})");
-    return result;
-}
-
-//marcmod
-unsigned
-RISCVMCCodeEmitter::getImm5OpValue(const MCInst &MI, unsigned OpNo,
-                                     SmallVectorImpl<MCFixup> &Fixups,
-                                     const MCSubtargetInfo &STI) const {
-    const MCOperand &MO = MI.getOperand(OpNo);
-
-    if (MO.isImm())
-        return imm5OpEncoder(MO.getImm());
-
-    assert(MO.isExpr() &&
-            "getSImm5OpValue expects only expressions or an immediate");
-
-    const MCExpr *Expr = MO.getExpr();
-
-    // Constant value, no fixup is needed
-    if (const MCConstantExpr *CE = dyn_cast<MCConstantExpr>(Expr))
-        return imm5OpEncoder(CE->getValue());
-
-  //  MCFixupKind Kind;
-  //  if (const RISCVMCExpr *SExpr = dyn_cast<RISCVMCExpr>(Expr)) {
-  //      Kind = MCFixupKind(SExpr->getFixupKind());
-  //  } else {
-  //      bool IsPic = Ctx.getObjectFileInfo()->isPositionIndependent();
-  //      Kind = IsPic ? MCFixupKind(RISCV::fixup_sparc_got5)
-  //          : MCFixupKind(RISCV::fixup_sparc_5);
-  //  }
-
-  //  Fixups.push_back(MCFixup::create(0, Expr, Kind));
-    return 0;
-}
-
-//marcmod
-unsigned
-RISCVMCCodeEmitter::getSImm5OpValue(const MCInst &MI, unsigned OpNo,
-                                     SmallVectorImpl<MCFixup> &Fixups,
-                                     const MCSubtargetInfo &STI) const {
-    const MCOperand &MO = MI.getOperand(OpNo);
-
-    if (MO.isImm())
-        return sImm5OpEncoder(MO.getImm());
-
-    assert(MO.isExpr() &&
-            "getSImm5OpValue expects only expressions or an immediate");
-
-    const MCExpr *Expr = MO.getExpr();
-
-    // Constant value, no fixup is needed
-    if (const MCConstantExpr *CE = dyn_cast<MCConstantExpr>(Expr))
-        return sImm5OpEncoder(CE->getValue());
-
-  //  MCFixupKind Kind;
-  //  if (const RISCVMCExpr *SExpr = dyn_cast<RISCVMCExpr>(Expr)) {
-  //      Kind = MCFixupKind(SExpr->getFixupKind());
-  //  } else {
-  //      bool IsPic = Ctx.getObjectFileInfo()->isPositionIndependent();
-  //      Kind = IsPic ? MCFixupKind(RISCV::fixup_sparc_got5)
-  //          : MCFixupKind(RISCV::fixup_sparc_5);
-  //  }
-
-  //  Fixups.push_back(MCFixup::create(0, Expr, Kind));
-    return 0;
-}
+//unsigned 
+//RISCVMCCodeEmitter::imm5OpEncoder(const int64_t imm) const{
+//    int64_t value = imm;
+//    if (value == 0) return 0b00001;
+//    if (value > 255 || value < 0) 
+//        report_fatal_error("Invalid value for ImmOp5: Value must be within [0, 255] range");
+//    unsigned result = 0;
+//    if (value%2 == 1) {
+//        value++;
+//        result |= 1;
+//    }
+//    if ((value&2)==2 && value>2) {
+//        value -= 2;
+//        result |= 0b10000;
+//    }
+//    result |= __builtin_ctz(value)<<1;
+//    //verification
+//    unsigned plus = (result>>3)&2;
+//    unsigned sub = result&1;
+//    unsigned exp = 1<<((result>>1)&0b111);
+//    unsigned tgt = exp+plus-sub;
+//    if (tgt != imm) 
+//        report_fatal_error("Invalid value for SImmOp5: Value must be representable by immediate{4}*2+2^(immediate{3-1})-immediate{0}");
+//
+//    return result;
+//}
+//
+////marcmod 
+//unsigned 
+//RISCVMCCodeEmitter::sImm5OpEncoder(const int64_t imm) const{
+//    int64_t value = imm;
+//    if (value == 0) return 0b00001;
+//    if (value>127 || value < -128) 
+//        report_fatal_error("Invalid value for SImmOp5: Value must be within [127, -128] range");
+//    unsigned result = 0;
+//    if (value <0){
+//        result = 0b10000;
+//        value = -value;
+//    }
+//    if (value%2 == 1) {
+//        value++;
+//        result |= 1;
+//    }
+//    result |= __builtin_ctz(value)<<1;
+//    //verification
+//    signed sign = (result>>4)? -1:1;
+//    unsigned sub = result&1;
+//    unsigned exp = 1<<((result>>1)&0b111);
+//    signed tgt = sign * (exp - sub);
+//    if (tgt != imm) 
+//        report_fatal_error("Invalid value for SImmOp5: Value must be representable by immediate{4}?-1:1*(2^(immediate{3-1})-immediate{0})");
+//    return result;
+//}
+//
+////marcmod
+//unsigned
+//RISCVMCCodeEmitter::getImm5OpValue(const MCInst &MI, unsigned OpNo,
+//                                     SmallVectorImpl<MCFixup> &Fixups,
+//                                     const MCSubtargetInfo &STI) const {
+//    const MCOperand &MO = MI.getOperand(OpNo);
+//
+//    if (MO.isImm())
+//        return imm5OpEncoder(MO.getImm());
+//
+//    assert(MO.isExpr() &&
+//            "getSImm5OpValue expects only expressions or an immediate");
+//
+//    const MCExpr *Expr = MO.getExpr();
+//
+//    // Constant value, no fixup is needed
+//    if (const MCConstantExpr *CE = dyn_cast<MCConstantExpr>(Expr))
+//        return imm5OpEncoder(CE->getValue());
+//
+//  //  MCFixupKind Kind;
+//  //  if (const RISCVMCExpr *SExpr = dyn_cast<RISCVMCExpr>(Expr)) {
+//  //      Kind = MCFixupKind(SExpr->getFixupKind());
+//  //  } else {
+//  //      bool IsPic = Ctx.getObjectFileInfo()->isPositionIndependent();
+//  //      Kind = IsPic ? MCFixupKind(RISCV::fixup_sparc_got5)
+//  //          : MCFixupKind(RISCV::fixup_sparc_5);
+//  //  }
+//
+//  //  Fixups.push_back(MCFixup::create(0, Expr, Kind));
+//    return 0;
+//}
+//
+////marcmod
+//unsigned
+//RISCVMCCodeEmitter::getSImm5OpValue(const MCInst &MI, unsigned OpNo,
+//                                     SmallVectorImpl<MCFixup> &Fixups,
+//                                     const MCSubtargetInfo &STI) const {
+//    const MCOperand &MO = MI.getOperand(OpNo);
+//
+//    if (MO.isImm())
+//        return sImm5OpEncoder(MO.getImm());
+//
+//    assert(MO.isExpr() &&
+//            "getSImm5OpValue expects only expressions or an immediate");
+//
+//    const MCExpr *Expr = MO.getExpr();
+//
+//    // Constant value, no fixup is needed
+//    if (const MCConstantExpr *CE = dyn_cast<MCConstantExpr>(Expr))
+//        return sImm5OpEncoder(CE->getValue());
+//
+//  //  MCFixupKind Kind;
+//  //  if (const RISCVMCExpr *SExpr = dyn_cast<RISCVMCExpr>(Expr)) {
+//  //      Kind = MCFixupKind(SExpr->getFixupKind());
+//  //  } else {
+//  //      bool IsPic = Ctx.getObjectFileInfo()->isPositionIndependent();
+//  //      Kind = IsPic ? MCFixupKind(RISCV::fixup_sparc_got5)
+//  //          : MCFixupKind(RISCV::fixup_sparc_5);
+//  //  }
+//
+//  //  Fixups.push_back(MCFixup::create(0, Expr, Kind));
+//    return 0;
+//}
 
 unsigned RISCVMCCodeEmitter::getVMaskReg(const MCInst &MI, unsigned OpNo,
                                          SmallVectorImpl<MCFixup> &Fixups,

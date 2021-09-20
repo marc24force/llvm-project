@@ -247,6 +247,10 @@ def : ProcessorModel<"generic-rv64", NoSchedModel, [Feature64Bit]>;
 def : ProcessorModel<"rocket-rv32", RocketModel, []>;
 def : ProcessorModel<"rocket-rv64", RocketModel, [Feature64Bit]>;
 
+def : ProcessorModel<"noelv-rv32", NoSchedModel, [FeatureStdExtM]>;
+def : ProcessorModel<"noelv-rv64", RocketModel, [Feature64Bit,
+                                                 FeatureStdExtM]>;
+
 def : ProcessorModel<"sifive-7-rv32", SiFive7Model, []>;
 def : ProcessorModel<"sifive-7-rv64", SiFive7Model, [Feature64Bit]>;
 

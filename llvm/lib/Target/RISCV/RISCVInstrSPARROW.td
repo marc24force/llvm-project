@@ -10,6 +10,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+// Define SCR (Simd Control register)
+def SCR    : RISCVReg<0, "SCR">;
+
 //===----------------------------------------------------------------------===//
 // Instruction format superclass
 //===----------------------------------------------------------------------===//
@@ -50,21 +53,22 @@ class RV_AIimm<bits<5>sd1Val, bits<3> sd2Val, dag outs, dag ins,
       let Opcode = 0b0001011;
 }
 
+
 //===----------------------------------------------------------------------===//
 // Instruction Pattern Stuff
 //===----------------------------------------------------------------------===//
 
-//5 bit encoded operand for signed AI SPARROW
-def simm5Op : Operand<i8> {
-  let DecoderMethod = "DecodeSIMM5";
-  let EncoderMethod = "getSImm5OpValue";
-}
-
-//5 bit encoded operand for unsigned AI SPARROW
-def imm5Op : Operand<i8> {
-  let DecoderMethod = "DecodeIMM5";
-  let EncoderMethod = "getImm5OpValue";
-}
+////5 bit encoded operand for signed AI SPARROW
+//def simm5Op : Operand<i8> {
+//  let DecoderMethod = "DecodeSIMM5";
+//  let EncoderMethod = "getSImm5OpValue";
+//}
+//
+////5 bit encoded operand for unsigned AI SPARROW
+//def imm5Op : Operand<i8> {
+//  let DecoderMethod = "DecodeIMM5";
+//  let EncoderMethod = "getImm5OpValue";
+//}
 
 //===----------------------------------------------------------------------===//
 // Instruction Class Templates
@@ -112,72 +116,75 @@ multiclass Simd<string OpcStr, bits<5> sd1Val, SDNode OpNode,
 
 //TODO: change sub for sparrow
 //SPARROW instructions
-//let Uses = [SCR] in{
-  defm NOP_   : Simd<"nop_",   0b00000, srem, GPR, v4i8, simm5Op>,
+let Uses = [SCR] in{
+  defm NOP_   : Simd<"nop_",   0b00000, srem, GPR, v4i8, uimm5>,
                 Sched<[WriteIALU32, ReadIALU32, ReadIALU32]>;
-  defm ADD_   : Simd<"add_",   0b00001, add, GPR, v4i8, imm5Op>,
+  defm ADD_   : Simd<"add_",   0b00001, add, GPR, v4i8, uimm5>,
                 Sched<[WriteIALU32, ReadIALU32, ReadIALU32]>;
-  defm SUB_   : Simd<"sub_",   0b00010, sub, GPR, v4i8, imm5Op>,
+  defm SUB_   : Simd<"sub_",   0b00010, sub, GPR, v4i8, uimm5>,
                 Sched<[WriteIALU32, ReadIALU32, ReadIALU32]>;
-  defm MUL_   : Simd<"mul_",   0b00011, mul, GPR, v4i8, simm5Op>,
+  defm MUL_   : Simd<"mul_",   0b00011, mul, GPR, v4i8, uimm5>,
                 Sched<[WriteIALU32, ReadIALU32, ReadIALU32]>;
-  defm MAX_   : Simd<"max_",   0b00101, smax, GPR, v4i8, simm5Op>,
+  defm MAX_   : Simd<"max_",   0b00101, smax, GPR, v4i8, uimm5>,
                 Sched<[WriteIALU32, ReadIALU32, ReadIALU32]>;
-  defm MIN_   : Simd<"min_",   0b00110, smin, GPR, v4i8, simm5Op>,
+  defm MIN_   : Simd<"min_",   0b00110, smin, GPR, v4i8, uimm5>,
                 Sched<[WriteIALU32, ReadIALU32, ReadIALU32]>;
-  defm AND_   : Simd<"and_",   0b00111, and, GPR, v4i8, imm5Op>,
+  defm AND_   : Simd<"and_",   0b00111, and, GPR, v4i8, uimm5>,
                 Sched<[WriteIALU32, ReadIALU32, ReadIALU32]>;
-  defm OR_    : Simd<"or_",    0b01000, or, GPR, v4i8, imm5Op>,
+  defm OR_    : Simd<"or_",    0b01000, or, GPR, v4i8, uimm5>,
                 Sched<[WriteIALU32, ReadIALU32, ReadIALU32]>;
-  defm XOR_   : Simd<"xor_",   0b01001, xor, GPR, v4i8, imm5Op>,
+  defm XOR_   : Simd<"xor_",   0b01001, xor, GPR, v4i8, uimm5>,
                 Sched<[WriteIALU32, ReadIALU32, ReadIALU32]>;
-  defm NAND_  : Simd<"nand_",  0b01010, srem, GPR, v4i8, imm5Op>,
+  defm NAND_  : Simd<"nand_",  0b01010, srem, GPR, v4i8, uimm5>,
                 Sched<[WriteIALU32, ReadIALU32, ReadIALU32]>;
-  defm NOR_   : Simd<"nor_",   0b01011, srem, GPR, v4i8, imm5Op>,
+  defm NOR_   : Simd<"nor_",   0b01011, srem, GPR, v4i8, uimm5>,
                 Sched<[WriteIALU32, ReadIALU32, ReadIALU32]>;
-  defm XNOR_  : Simd<"xnor_",  0b01100, srem, GPR, v4i8, imm5Op>,
+  defm XNOR_  : Simd<"xnor_",  0b01100, srem, GPR, v4i8, uimm5>,
                 Sched<[WriteIALU32, ReadIALU32, ReadIALU32]>;
-  defm SADD_  : Simd<"sadd_",  0b01101, srem, GPR, v4i8, imm5Op>,
+  defm SADD_  : Simd<"sadd_",  0b01101, srem, GPR, v4i8, uimm5>,
                 Sched<[WriteIALU32, ReadIALU32, ReadIALU32]>;
-  defm SSUB_  : Simd<"ssub_",  0b01110, srem, GPR, v4i8, imm5Op>,
+  defm SSUB_  : Simd<"ssub_",  0b01110, srem, GPR, v4i8, uimm5>,
                 Sched<[WriteIALU32, ReadIALU32, ReadIALU32]>;
-  defm SMUL_  : Simd<"smul_",  0b01111, srem, GPR, v4i8, simm5Op>,
+  defm SMUL_  : Simd<"smul_",  0b01111, srem, GPR, v4i8, uimm5>,
                 Sched<[WriteIALU32, ReadIALU32, ReadIALU32]>;
-  defm MERG_  : Simd<"merg_",  0b10000, srem, GPR, v4i8, imm5Op>,
+  defm MERG_  : Simd<"merg_",  0b10000, srem, GPR, v4i8, uimm5>,
                 Sched<[WriteIALU32, ReadIALU32, ReadIALU32]>;
-  defm SHFT_  : Simd<"shft_",  0b10001, srem, GPR, v4i8, imm5Op>,
+  defm SHFT_  : Simd<"shft_",  0b10001, srem, GPR, v4i8, uimm5>,
                 Sched<[WriteIALU32, ReadIALU32, ReadIALU32]>;
-  defm UMUL_  : Simd<"umul_",  0b10011, srem, GPR, v4i8, imm5Op>,
+  defm UMUL_  : Simd<"umul_",  0b10011, srem, GPR, v4i8, uimm5>,
                 Sched<[WriteIALU32, ReadIALU32, ReadIALU32]>;
-  defm UMAX_  : Simd<"umax_",  0b10101, umax, GPR, v4i8, imm5Op>,
+  defm UMAX_  : Simd<"umax_",  0b10101, umax, GPR, v4i8, uimm5>,
                 Sched<[WriteIALU32, ReadIALU32, ReadIALU32]>;
-  defm UMIN_  : Simd<"umin_",  0b10110, umin, GPR, v4i8, imm5Op>,
+  defm UMIN_  : Simd<"umin_",  0b10110, umin, GPR, v4i8, uimm5>,
                 Sched<[WriteIALU32, ReadIALU32, ReadIALU32]>;
-  defm SSHFT_ : Simd<"sshft_", 0b11001, srem, GPR, v4i8, imm5Op>,
+  defm SSHFT_ : Simd<"sshft_", 0b11001, srem, GPR, v4i8, uimm5>,
                 Sched<[WriteIALU32, ReadIALU32, ReadIALU32]>;
-  defm USADD_ : Simd<"usadd_", 0b11101, srem, GPR, v4i8, imm5Op>,
+  defm USADD_ : Simd<"usadd_", 0b11101, srem, GPR, v4i8, uimm5>,
                 Sched<[WriteIALU32, ReadIALU32, ReadIALU32]>;
-  defm USSUB_ : Simd<"ussub_", 0b11110, srem, GPR, v4i8, imm5Op>,
+  defm USSUB_ : Simd<"ussub_", 0b11110, srem, GPR, v4i8, uimm5>,
                 Sched<[WriteIALU32, ReadIALU32, ReadIALU32]>;
-  defm USMUL_ : Simd<"usmul_", 0b11111, srem, GPR, v4i8, imm5Op>,
+  defm USMUL_ : Simd<"usmul_", 0b11111, srem, GPR, v4i8, uimm5>,
                 Sched<[WriteIALU32, ReadIALU32, ReadIALU32]>;
 
-//}
+}
 
 ////READ and WRITE for the %SCR
-//let rs2 = 0, rs1 = 0, Uses=[SCR] in
-//    def RDSCR : F3_1<2, 0b101100,
-//             (outs GPR:$rd), (ins),
-//             "rd %scr, $rd", []>;
-//
-//let Defs = [SCR], rd=0 in {
-//    def WRSCRrr : F3_1<2, 0b011001,
-//             (outs), (ins GPR:$rs1, GPR:$rs2),
-//             "wr $rs1, $rs2, %scr", []>;
-//    def WRSCRri : F3_2<2, 0b011001,
-//             (outs), (ins GPR:$rs1, simm13Op:$simm13),
-//             "wr $rs1, $simm13, %scr", []>;
-//}
+let rs2 = 0, rs1 = 0, hasSideEffects = 0,
+    mayLoad = 0, mayStore = 0, Uses=[SCR] in
+      def RDSCR : RVInstR<0, 0, RISCVOpcode<0b0011111>,
+                  (outs GPR:$rd), (ins), "scrrd", "$rd">,
+          Sched<[WriteIALU32, ReadIALU32, ReadIALU32]>;
+let Defs = [SCR], rd=0, hasSideEffects = 1,
+    mayLoad = 0, mayStore = 0 in {
+      def WRSCRrr : RVInstR<0, 1, RISCVOpcode<0b0011111>,
+                  (outs), (ins GPR:$rs1, GPR:$rs2), "scrwr", "$rs1, $rs2">,
+          Sched<[WriteIALU32, ReadIALU32, ReadIALU32]>;
+
+      def WRSCRri : RVInstI<3, RISCVOpcode<0b0011111>, (outs),
+                  (ins GPR:$rs1, simm12:$imm12), "scrwr", "$rs1, $imm12">,
+          Sched<[WriteIALU32, ReadIALU32, ReadIALU32]>;
+
+}
 
 //===----------------------------------------------------------------------===//
 // Patterns for type compatibility
@@ -196,25 +203,25 @@ multiclass Simd<string OpcStr, bits<5> sd1Val, SDNode OpNode,
 def : InstAlias<"dot $rd, $rs1, $rs2", (MUL_SUMrr GPR:$rd, GPR:$rs1,
                                                              GPR:$rs2), 0>;
 def : InstAlias<"dot $rd, $rs1, $simm5", (MUL_SUMri GPR:$rd, GPR:$rs1,
-                                                             i8imm:$simm5), 0>;
+                                                             uimm5:$simm5), 0>;
 
 //udot alias
 def : InstAlias<"udot $rd, $rs1, $rs2", (UMUL_USUMrr GPR:$rd,
                 GPR:$rs1, GPR:$rs2), 0>;
 def : InstAlias<"udot $rd, $rs1, $simm5", (UMUL_USUMri GPR:$rd,
-                GPR:$rs1, i8imm:$simm5), 0>;
+                GPR:$rs1, uimm5:$simm5), 0>;
 
 //sdot alias
 def : InstAlias<"sdot $rd, $rs1, $rs2", (SMUL_SUMrr GPR:$rd,
                 GPR:$rs1, GPR:$rs2), 0>;
 def : InstAlias<"sdot $rd, $rs1, $simm5", (SMUL_SUMri GPR:$rd,
-                GPR:$rs1, i8imm:$simm5), 0>;
+                GPR:$rs1, uimm5:$simm5), 0>;
 
 //usdot alias
 def : InstAlias<"usdot $rd, $rs1, $rs2", (USMUL_USUMrr GPR:$rd,
                 GPR:$rs1, GPR:$rs2), 0>;
 def : InstAlias<"usdot $rd, $rs1, $simm5", (USMUL_USUMri GPR:$rd,
-                GPR:$rs1, i8imm:$simm5), 0>;
+                GPR:$rs1, uimm5:$simm5), 0>;
 
 //nop alias nop_ -> nop %x0, %x0, %x0
 def : InstAlias<"nop_", (NOP_NOPrr X0, X0, X0), 0>;
@@ -238,14 +245,6 @@ def : InstAlias<"nop_umax $rd, $rs1", (NOP_UMAXrr GPR:$rd,
                                        GPR:$rs1, X0), 0>;
 def : InstAlias<"nop_umin $rd, $rs1", (NOP_UMINrr GPR:$rd,
                                        GPR:$rs1, X0), 0>;
-
-// mov %scr, rd -> rd %scr, rd
-//def : InstAlias<"mov %scr, $rd", (RDSCR GPR:$rd), 0>;
-//
-//// mov reg_or_imm, %scr -> wr %x0, reg_or_imm, %scr
-//def : InstAlias<"mov $rs2, %scr", (WRSCRrr X0, GPR:$rs2), 0>;
-//def : InstAlias<"mov $simm13, %scr", (WRSCRri X0, i32imm:$simm13), 0>;
-//
-//// wr reg_or_imm, %scr -> wr %x0, reg_or_imm, %scr
-//def : InstAlias<"wr $rs2, %scr", (WRSCRrr X0, GPR:$rs2), 0>;
-//def : InstAlias<"wr $simm13, %scr", (WRSCRri X0, i32imm:$simm13), 0>;
+// scrwr reg_or_imm -> scrwr %x0, reg_or_imm
+def : InstAlias<"scrwr $rs2", (WRSCRrr X0, GPR:$rs2), 0>;
+def : InstAlias<"scrwr $imm12", (WRSCRri X0, simm12:$imm12), 0>;

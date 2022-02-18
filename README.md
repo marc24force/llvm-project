@@ -104,3 +104,19 @@ Consult the
 page for detailed information on configuring and compiling LLVM. You can visit
 [Directory Layout](https://llvm.org/docs/GettingStarted.html#directory-layout)
 to learn about the layout of the source code tree.
+
+## Credits and License
+
+This repository is a copy from the original LLVM-project but additionally contains an extension for SPARROW AI acceleration module.
+More information can be found in the related repositories:
+
+- [Main SPARROW repository](https://gitlab.bsc.es/msolebon/sparrow)
+- [GCC compiler](https://gitlab.bsc.es/msolebon/bcc-sparrow)
+
+This project has been developed by Marc Solé Bonet under the supervision of Dr. Leonidas Kosmidis. The work was presented as Master Thesis at the Universitat Politècnica de Catalunya (UPC) for the Master in Innovation and Research in Informatics (MIRI) - High Performance Computing (HPC). This project has been developed while working at the Barcelona Supercomputing Center (BSC).
+
+The Thesis has been awarded by the Spanish Chapter of the IEEE AESS as best Master Thesis. Also, a prior iteration of this project received the first place at the [Xilinx Open Hardware 2021](http://www.openhw.eu/2021) competition in the Student category.
+
+The project is open source under a GPL license. If you use this work or any part of it, please cite it as:  
+
+*Marc Solé Bonet, Leonidas Kosmidis, SPARROW: A Low-Cost Hardware/Software Co-designed SIMD Microarchitecture for AI Operations in Space Processors. Design, Automation and Test in Europe Conference, DATE 2022*
